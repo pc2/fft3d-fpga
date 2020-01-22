@@ -1,0 +1,16 @@
+bin/
+fpgabitstream/
+samples/
+inputfiles/
+outputfiles/
+scripts/
+reports/
+vscode/
+test/
+tags
+*.DS_Store
+slurm*
+*.swp
+*.vscode
+host
+*.log
