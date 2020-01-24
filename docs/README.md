@@ -1,38 +1,77 @@
 # Modelling the performance of FFT3d
 
-Performance of FFT3d is dependent on the performance of its building block the FFT1d kernels.
+Performance of FFT3d is dependent on the performance of its building blocks - FFT1d kernels.
 
 ## Modelling Throughput of FFT1d Kernel
 
-Floating point operations in the kernel:
+FFT1d kernel modelled here can be found in the Intel OpenCL Design Samples. The design follows the radix 2<sup>2</sup> FFT architecture, which consists of the following:
 
-1. Butterfly
+1. logN radix-2 butterflies
+2. trivial rotations at every even stage
+3. non-trivial rotations at every odd stage. This is the twiddle factor multiplication computed after the stage's butterfly.
+4. shuffling using shift registers
 
-    8 complex floating points as input.
-    Performs 8 floating point additions and 8 floating point subtractions.
-    For an N point FFT, there are logN stages that the N points require for an FFT. Each stage performs an 8 point butterfly. Therefore, for N points, there are **logN** butterflies. This makes
+In order to calculate an N-point FFT, the design inputs 8 complex points per cycle in a bit reversed order. This requires `N / 8` cycles to store the N points into a shift register. Each point requires `logN` stages to complete the transformation. After a delay of `N / 8 - 1` cycles, 8 complex points are output per cycle for `N / 8` cycles.
 
-        logN * 16 flops for butterflies
+Example of the design:
 
+TODO: image
 
-2. Complex Rotations or multiplications with twiddle factors
+### Butterfly
 
-    8 complex floating points as input.
-    Performs 4 dot products per multiplication with twiddle factor.
-    There are a total of 6 multiplications because point 0 and N / 2 multiply by 1. There are **logN - 1 / 2** complex rotates. This makes
+- FFT kernel performs radix-2 butterflies. Considering 8 points of input, 4 parallel butterflies are performed at every stage.
 
-        floor(logN - 1 / 2) * 6
+- There are `logN stages` i.e. `logN * 4` butterflies.
 
-Total number of floating point operations performed by N point FFT
+#### Radix-2 butterfly
 
-        num_flops = (logN * 16) + floor((logN - 1) / 2) * 6 
+- 2 complex floating points as input and output.
 
-Considering these stages are pipelined, for a given frequency
+- Floating point addition of the complex points for the first output point and floating subtraction for the second. Considering these are complex points, this makes for 2 additions and 2 subtractions per butterfly.
 
-        throughput = num_flops * clock_freq
-                  = ((logN * 16) + floor((logN - 1) / 2) * 6)  * clock_freq
+TODO: image
 
-#### Number of DSPs used for different FFT sizes.
+Therefore, each stage has `2 * 4` floating point additions and `2 * 4` floating point subtractions, with a total of:
+
+        logN * 8 floating point additions 
+        logN * 8 floating point subtractions
+
+### Complex Rotations
+
+As mentioned above, every odd stage until `logN -1` stages perform a complex rotation. This involves multiplying the points with the twiddle factors. The twiddle factors are pre-calculated and stored; every stage looks up the value based on the stage and the index values. The number of complex rotations in a N-point FFT can be expressed using this formula:
+
+$$ floor((logN - 1) / 2) $$
+
+In a complex rotation of 8 input points, every point except Point 0 and Point 4 are multiplied with distinct twiddle factors, since these points are multiplied by 1. Complex multiplication follows the formula:
+
+$$ (x+yi)(a+bi) = (xa - yb) + (xb + ya)i $$
+
+Each complex multiplication comprises of 4 floating point multiplications, 1 floating point subtraction and 1 floating point addition as described in the code sample below.
+
+        float2 comp_mult(float2 a, float2 b) {
+                float2 res;
+                res.x = a.x * b.x - a.y * b.y;
+                res.y = a.x * b.y + a.y * b.x;
+                return res;
+        }
+
+The number of floating point operations:
+
+        floor((logN - 1) / 2) complex rot * 6 mult per rot * 6 flops per multiplication 
+
+$$ floor((logN - 1) / 2) * 36 $$
+
+This can be mapped to two dot product computations of size 2. For the 6 complex multiplications in a complex rotation, this is a total of 12 dot products (of size 2). Each dot product is implemented by a specific hardened floating point dot product DSP. Considering the size of dot product is 2, 2 DSPs are required. The total number of DSPs required for all complex rotations of N point FFT can be mapped by the formula:
+
+        floor((logN - 1) / 2) rot * 6 mult * 2 dot products * 2 size
+
+### DSP Usage
+
+Total number of DSPs required by N-point FFT:
+
+$$ (logN * 16) + floor((logN - 1) / 2) * 24 $$
+
+Estimating DSP required for different FFT sizes:
 
 | FFT Size | # DSPs |
 |:--------:|:------:|
@@ -42,12 +81,19 @@ Considering these stages are pipelined, for a given frequency
 |    128   |   184  |
 |    256   |   200  |
 
-#### Throughput
+### Throughput
 
-Modelled for clock frequency of 467 MHz assuming hyperflex is turned on. 
+Total number of floating point operations is a total of the number of butterflies and the number of complex rotations:
+
+        num_flops = ((logN * 16) + floor((logN - 1) / 2) * 36) 
+
+Considering logN stages are pipelined, for maximum frequency:
+
+        throughput = num_flops * clock_freq
+                  = ((logN * 16) + floor((logN - 1) / 2) * 6)  * clock_freq
+
+Modelled for clock frequency of 467 MHz assuming hyperflex is turned on.
 
 ![Throughput for different FFT1d Sizes](common/fft1d_throughput.png)
-
-TODO: Is a dot product considered as 3 flops?
 
 **Note**: The FFT1d building block kernel used to implement FFT3d is the one provided in the Intel's design samples. The input and the output to the FFT1d kernel are both in bit-reversed order, the latter entails the need to perform another bit reversal to obtain the standard FFT output.
