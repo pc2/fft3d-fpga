@@ -63,7 +63,7 @@ The number of floating point operations:
 
 This can be mapped to two dot product computations of size 2. For the 6 complex multiplications in a complex rotation, this is a total of 12 dot products (of size 2). Each dot product is implemented by a specific hardened floating point dot product DSP. Considering the size of dot product is 2, 2 DSPs are required. The total number of DSPs required for all complex rotations of N point FFT can be mapped by the formula:
 
-        floor((logN - 1) / 2) rot * 6 mult * 2 dot products * 2 size
+        floor((logN - 1) / 2) rot * 6 mult * 2 dot products * 2 size of a dot product
         
 <a href="https://www.codecogs.com/eqnedit.php?latex=$$&space;floor((logN&space;-&space;1)&space;/&space;2)&space;*&space;24&space;$$" target="_blank"><img src="https://latex.codecogs.com/svg.latex?$$&space;floor((logN&space;-&space;1)&space;/&space;2)&space;*&space;24&space;$$" title="$$ floor((logN - 1) / 2) * 24 $$" /></a>
 
