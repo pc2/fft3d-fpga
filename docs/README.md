@@ -11,7 +11,7 @@ FFT1d kernel modelled here can be found in the Intel OpenCL Design Samples. The 
 3. non-trivial rotations at every odd stage. This is the twiddle factor multiplication computed after the stage's butterfly.
 4. shuffling using shift registers
 
-In order to calculate an N-point FFT, the design inputs 8 complex points per cycle in a bit reversed order. This requires `N / 8` cycles to store the N points into a shift register. Each point requires `logN` stages to complete the transformation. After a delay of `N / 8 - 1` cycles, 8 complex points are output per cycle for `N / 8` cycles.
+In order to calculate an N-point FFT, the design inputs 8 complex points per cycle in a bit reversed order. This requires `N / 8` cycles to store the N points into a shift register. Each point requires `logN` stages to complete the transformation. After a delay of `N / 8 - 1` cycles, 8 distinct complex points are output per cycle for `N / 8` cycles for the N transformed points.
 
 Example of the design:
 
