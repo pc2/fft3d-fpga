@@ -13,6 +13,12 @@ The FFT1d kernel provided in the Intel Design Samples processes 8 complex points
 |    128   |      0.053         |    0.063           |
 |    256   |      0.107         |    0.126           |
 
+### Measurement Details
+
+- Latency measured as an average of 100000 iterations for every given FFT size.
+- Kernel code is synthesized using Intel OpenCL SDK version 19.3 and the Nallatech BSP version 19.2.0_hpc.
+- Host code is compiled using gcc 8.3.0.
+
 ## Modelling Throughput of FFT1d Kernel
 
 FFT1d kernel modelled here can be found in the Intel OpenCL Design Samples. The design follows the radix 2<sup>2</sup> FFT architecture, which consists of the following:
