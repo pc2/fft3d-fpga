@@ -2,6 +2,17 @@
 
 Performance of FFT3d is dependent on the performance of its building blocks - FFT1d kernels.
 
+## Modelling Latency of FFT1d Kernel
+
+The FFT1d kernel provided in the Intel Design Samples processes 8 complex points per cycle, which matches the data width of a single bank of DDR memory. Therefore, the kernel is memory bandwidth bound.
+
+| FFT Size | Expected Latency (microsec)  |   Measured Latency (microsec)   |
+|:--------:|:------------------:|:------------------:|
+|    32    |      0.013         |                    |  
+|    64    |      0.027         |     0.032          |
+|    128   |      0.053         |    0.063           |
+|    256   |      0.107         |    0.126           |
+
 ## Modelling Throughput of FFT1d Kernel
 
 FFT1d kernel modelled here can be found in the Intel OpenCL Design Samples. The design follows the radix 2<sup>2</sup> FFT architecture, which consists of the following:
