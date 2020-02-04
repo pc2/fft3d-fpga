@@ -13,6 +13,8 @@ The FFT1d kernel provided in the Intel Design Samples processes 8 complex points
 |    128   |      0.053         |    0.063           |
 |    256   |      0.107         |    0.126           |
 
+The empty value for the size 32 of the measured latency is because the code cannot be synthesized out-of-the-box for FFT values below 64 and needs refactoring.
+
 ### Measurement Details
 
 - Latency measured as an average of 100000 iterations for every given FFT size.
