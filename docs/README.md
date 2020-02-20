@@ -111,7 +111,7 @@ Modelled for clock frequency of 467 MHz assuming hyperflex is turned on.
 
 **Note**: The FFT1d building block kernel used to implement FFT3d is the one provided in the Intel's design samples. The input and the output to the FFT1d kernel are both in bit-reversed order, the latter entails the need to perform another bit reversal to obtain the standard FFT output.
 
-## Modelling Latency of FFT3d Kernel
+## Modelling Latency of FFT3d Design
 
 Developing an OpenCL 3d FFT kernel design requires transferring N$^3$ points from the host CPU to the DDR (global) memory via the PCIe bus, transforming the data and finally, transferring the results back to the host CPU. Each stage mentioned incurs latency, therefore, these can be categorized into:
 
