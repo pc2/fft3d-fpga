@@ -135,23 +135,23 @@ The following figure illustrates the kernels of the 3d FFT. The expressions with
 
 <img src="common/fft3d_singlebank_latency.png" alt="FFT3d single lane model of latency"	title="FFT3d single lane model of latency" width="200" height="500" />
 
-The 2d transposition requires $\frac{N*N}{8}$ cycles to buffer N$^2$ points and another $\frac{N*N}{8}$ to output them. This is because the pipeline processes 8 complex single precision floating points in every stage of the pipeline. This stage, however, adds only a latency of $\frac{N*N}{8}$; besides the first write to the buffer every other stage is overlapping with others.
+The 2d transposition requires $`\frac{N*N}{8}`$ cycles to buffer N$`^2`$ points and another $`\frac{N*N}{8}`$ to output them. This is because the pipeline processes 8 complex single precision floating points in every stage of the pipeline. This stage, however, adds only a latency of $`\frac{N*N}{8}`$; besides the first write to the buffer every other stage is overlapping with others.
 
-The 3d transpose is not pipelined therefore has 2 distinct read and write phases, denoted by the dashes. Additional 2d transpositions are required as intermediate buffers before storing and loading from the 3d buffer that adds further $\frac{N*N}{8}$ cycles of latency each.
+The 3d transpose is not pipelined therefore has 2 distinct read and write phases, denoted by the dashes. Additional 2d transpositions are required as intermediate buffers before storing and loading from the 3d buffer that adds further $`\frac{N*N}{8}`$ cycles of latency each.
 
 ### Total Latency
 
 The total latency in cycles, can therefore, be expressed using the following equations:
 
-![L_{total}=L_{pcie\_load}+L_{kernel}+ L_{pcie\_store}](https://latex.codecogs.com/svg.latex?L_{total}=L_{pcie\_load}&plus;L_{kernel}&plus;L_{pcie\_store})
+![L_{total}=L_{pcieload}+L_{kernel}+ L_{pciestore}](https://latex.codecogs.com/svg.latex?L_{total}=L_{pcieload}&plus;L_{kernel}&plus;L_{pciestore})
 
-![L_{kernel}=L_{ddr\_fetch}+L_{pipeline}+L_{ddr\_store}](https://latex.codecogs.com/svg.latex?L_{kernel}=L_{ddr\_fetch}&plus;L_{pipeline}&plus;L_{ddr\_store})
+![L_{kernel}=L_{ddrfetch}+L_{pipeline}+L_{ddrstore}](https://latex.codecogs.com/svg.latex?L_{kernel}=L_{ddrfetch}&plus;L_{pipeline}&plus;L_{ddrstore})
 
 ![L_{pipeline}\approx\frac{2*N+2*N^{2}+N^{3} -12}{4}](https://latex.codecogs.com/svg.latex?L_{pipeline}\approx\frac{2*N&plus;2*N^{2}&plus;N^{3}&space;-12}{4})
 
 This is a simplification of the delay contributed by the buffers as given in the figure. Assuming a clock frequency of 300 MHz, the pipeline latency can be estimated to be approximately:
 
-|  N$^3$  | Latency$_{singlelane}$(ms) |
+|  N$`^3`$  | Latency$`_{singlelane}`$(ms) |
 |:-----:|:-----------------------:|
 | 32^3  | 0.029                   |
 | 64^3  | 0.226                   |
