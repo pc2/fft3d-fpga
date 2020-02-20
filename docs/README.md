@@ -115,7 +115,7 @@ Modelled for clock frequency of 467 MHz assuming hyperflex is turned on.
 
 Developing an OpenCL 3d FFT kernel design requires transferring N$`^3`$ points from the host CPU to the DDR (global) memory via the PCIe bus, transforming the data and finally, transferring the results back to the host CPU. Each stage mentioned incurs latency, therefore, these can be categorized into:
 
-1. PCIe Latency to transfer data between Host CPU to DDR Memory.
+1. PCIe Latency to transfer data between Host CPU to DDR Memory of the FPGA board.
 2. DDR memory access and transfer latency
 3. Kernel execution latency
 
@@ -135,9 +135,9 @@ The following figure illustrates the kernels of the 3d FFT. The expressions with
 
 <img src="common/fft3d_singlebank_latency.png" alt="FFT3d single lane model of latency"	title="FFT3d single lane model of latency" width="200" height="500" />
 
-The 2d transposition requires $`\frac{N*N}{8}`$ cycles to buffer N$`^2`$ points and another $`\frac{N*N}{8}`$ to output them. This is because the pipeline processes 8 complex single precision floating points in every stage of the pipeline. This stage, however, adds only a latency of $`\frac{N*N}{8}`$; besides the first write to the buffer every other stage is overlapping with others.
+The 2d transposition requires $`\frac{N^2}{8}`$ cycles to buffer N$`^2`$ points and another $`\frac{N^2}{8}`$ to output them. This is because the pipeline processes 8 complex single precision floating points in every stage of the pipeline. This stage, however, adds only a latency of $`\frac{N^2}{8}`$; besides the first write to the buffer every other stage is overlapping with others.
 
-The 3d transpose is not pipelined therefore has 2 distinct read and write phases, denoted by the dashes. Additional 2d transpositions are required as intermediate buffers before storing and loading from the 3d buffer that adds further $`\frac{N*N}{8}`$ cycles of latency each.
+The 3d transpose is not pipelined therefore has 2 distinct read and write phases, denoted by the dashes. Additional 2d transpositions are required as intermediate buffers before storing and loading from the 3d buffer that adds further $`\frac{N^2}{8}`$ cycles of latency each.
 
 ### Total Latency
 
