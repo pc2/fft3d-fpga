@@ -113,7 +113,7 @@ Modelled for clock frequency of 467 MHz assuming hyperflex is turned on.
 
 ## Modelling Latency of FFT3d Design
 
-Developing an OpenCL 3d FFT kernel design requires transferring N$^3$ points from the host CPU to the DDR (global) memory via the PCIe bus, transforming the data and finally, transferring the results back to the host CPU. Each stage mentioned incurs latency, therefore, these can be categorized into:
+Developing an OpenCL 3d FFT kernel design requires transferring N$`^3`$ points from the host CPU to the DDR (global) memory via the PCIe bus, transforming the data and finally, transferring the results back to the host CPU. Each stage mentioned incurs latency, therefore, these can be categorized into:
 
 1. PCIe Latency to transfer data between Host CPU to DDR Memory.
 2. DDR memory access and transfer latency
