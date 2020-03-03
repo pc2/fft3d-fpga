@@ -1,0 +1,16 @@
+Using AOCX: fft1d.aocx
+
+Launching FFT transform for 4096 iterations
+PCIe Write Transfer Time of 0.433775ms for 262144 points of 2097152 bytes
+PCIe Read Transfer Time of 0.431683ms for 262144 points of 2097152 bytes
+	Processing time = 1.0411ms
+	Throughput = 0.2518 Gpoints / sec (7.5537 Gflops)
+	Signal to noise ratio on output sample: 138.709317 --> PASSED
+
+Launching inverse FFT transform for 4096 iterations
+PCIe Write Transfer Time of 0.435176ms for 262144 points of 2097152 bytes
+PCIe Read Transfer Time of 0.431081ms for 262144 points of 2097152 bytes
+	Processing time = 1.0457ms
+	Throughput = 0.2507 Gpoints / sec (7.5206 Gflops)
+	Signal to noise ratio on output sample: 138.908763 --> PASSED
+
