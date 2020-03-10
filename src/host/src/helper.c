@@ -17,7 +17,7 @@
 #include "fft_api.h"
 
 // function definitions
-unsigned coord(unsigned N[3], unsigned i, unsigned j, unsigned k);
+int coord(unsigned N, unsigned i, unsigned j, unsigned k);
 
 // --- CODE ------------------------------------------------------------------
 
@@ -25,112 +25,42 @@ unsigned coord(unsigned N[3], unsigned i, unsigned j, unsigned k);
  * \brief  create random single precision floating point values for FFT 
  *         computation or read existing ones if already saved in a file
  * \param  fft_data  : pointer to fft3d sized allocation of sp complex data for fpga
- * \param  fftw_data : pointer to fft3d sized allocation of sp complex data for fftw cpu computation
  * \param  N : 3 element integer array containing the size of FFT3d  
- * \param  fname : path to input file to read from or write into
  *****************************************************************************/
-void get_sp_input_data(float2 *fft_data, fftwf_complex *fftw_data, unsigned N[3], char *fname){
-  unsigned i = 0, j = 0, k = 0, where = 0;
-  float a, b;
+void fft_create_data(double2 *inp, int N){
 
-  // If file exists, read in the values
-  // Else randomly generate values and write to a file 
-  FILE *fp = fopen(fname,"r");
-  if(fp != NULL){
-      printf("-> Scanning from file - %s\n\n",fname);
-      for (i = 0; i < N[0]; i++) {
-        for (j = 0; j < N[1]; j++) {
-          for ( k = 0; k < N[2]; k++) {
-            where = coord(N, i, j, k);
-            fscanf(fp, "%f %f ", &a, &b);
-            fftw_data[where][0] = fft_data[where].x = a;
-            fftw_data[where][1] = fft_data[where].y = b;
-#ifdef DEBUG
-            printf(" %d %d %d : fft[%d] = (%f, %f) fftw[%d] = (%f, %f) \n", i, j, k, where, fft_data[where].x, fft_data[where].y, where, fftw_data[where][0], fftw_data[where][1]);
+  for(int i = 0; i < N; i++){
+
+    inp[i].x = (double)((double)rand() / (double)RAND_MAX);
+    inp[i].y = (double)((double)rand() / (double)RAND_MAX);
+
+#ifdef DEBUG          
+    printf(" %d : fft[%d] = (%lf, %lf) \n", i, i, inp[i].x, inp[i].y);
 #endif
-          }
-        }
-      }
   }
-  else{
-      printf("-> Data not available. Printing random floats to file - %s\n",fname);
-      fp = fopen(fname,"w");
-      for (i = 0; i < N[0]; i++) {
-        for (j = 0; j < N[1]; j++) {
-          for ( k = 0; k < N[2]; k++) {
-            where = coord(N, i, j, k);
 
-            fft_data[where].x = (float)((float)rand() / (float)RAND_MAX);
-            fft_data[where].y = (float)((float)rand() / (float)RAND_MAX);
-            fprintf(fp, "%f %f ", fft_data[where].x, fft_data[where].y);
-
-            fftw_data[where][0] = fft_data[where].x;
-            fftw_data[where][1] = fft_data[where].y;
-#ifdef DEBUG
-            printf(" %d %d %d : fft[%d] = (%f, %f) fftw[%d] = (%f, %f) \n", i, j, k, where, fft_data[where].x, fft_data[where].y, where, fftw_data[where][0], fftw_data[where][1]);
-#endif
-          }
-        }
-      }
-      fclose(fp);
-  }
 }
+
 /******************************************************************************
  * \brief  create random double precision floating point values for FFT 
  *         computation or read existing ones if already saved in a file
  * \param  fft_data  : pointer to fft3d sized allocation of dp complex data for fpga
- * \param  fftw_data : pointer to fft3d sized allocation of dp complex data for fftw cpu computation
  * \param  N : 3 element integer array containing the size of FFT3d  
- * \param  fname : path to input file to read from or write into
  *****************************************************************************/
-void get_dp_input_data(double2 *fft_data, fftw_complex *fftw_data, unsigned N[3], char* fname){
-  unsigned i = 0, j = 0, k = 0, where = 0;
+void fftf_create_data(float2 *inp, int N){
 
-  // If file exists, read in the values
-  // Else randomly generate values and write to a file s
-  FILE *fp = fopen(fname,"r");
-  if(fp != NULL){
-    printf("-> Scanning from file - %s\n\n",fname);
+  for(int i = 0; i < N; i++){
 
-    for (i = 0; i < N[0]; i++) {
-      for (j = 0; j < N[1]; j++) {
-        for ( k = 0; k < N[2]; k++) {
-          where = coord(N, i, j, k);
-          fscanf(fp, "%lf %lf ", &fft_data[where].x, &fft_data[where].y);
+    inp[i].x = (float)((float)rand() / (float)RAND_MAX);
+    inp[i].y = (float)((float)rand() / (float)RAND_MAX);
 
-          fftw_data[where][0] = fft_data[where].x;
-          fftw_data[where][1] = fft_data[where].y;
-#ifdef DEBUG
-          printf(" %d %d %d : fft[%d] = (%lf, %lf) fftw[%d] = (%lf, %lf) \n", i, j, k, where, fft_data[where].x, fft_data[where].y, where, fftw_data[where][0], fftw_data[where][1]);
-#endif
-        }
-      }
-    }
-  }
-  else{
-    printf("-> Data not available. Printing random doubles to file - %s\n",fname);
-
-    fp = fopen(fname,"w");
-    for (i = 0; i < N[0]; i++) {
-      for (j = 0; j < N[1]; j++) {
-        for ( k = 0; k < N[2]; k++) {
-          where = coord(N, i, j, k);
-
-          fft_data[where].x = (double)((double)rand() / (double)RAND_MAX);
-          fft_data[where].y = (double)((double)rand() / (double)RAND_MAX);
-          fprintf(fp, "%lf %lf ", fft_data[where].x, fft_data[where].y);
-
-          fftw_data[where][0] = fft_data[where].x;
-          fftw_data[where][1] = fft_data[where].y;
 #ifdef DEBUG          
-          printf(" %d %d %d : fft[%d] = (%lf, %lf) fftw[%d] = (%lf, %lf) \n", i, j, k, where, fft_data[where].x, fft_data[where].y, where, fftw_data[where][0], fftw_data[where][1]);
+    printf(" %d : fft[%d] = (%lf, %lf) \n", i, i, inp[i].x, inp[i].y);
 #endif
-        }
-      }
-    }
-    fclose(fp);
   }
+
 }
+
 /******************************************************************************
  * \brief  compute walltime in milliseconds
  * \retval time in milliseconds
@@ -160,7 +90,7 @@ unsigned coord(unsigned N[3], unsigned i, unsigned j, unsigned k) {
  * \param  inverse : 1 for backward fft3d
  * \retval walltime of fftw execution measured in double precision
  *****************************************************************************/
-double compute_sp_fftw(fftwf_complex *fftw_data, int N[3], int inverse){
+int compute_sp_fftw(fftwf_complex *fftw_data, int N[3], int inverse){
   fftwf_plan plan;
 
   printf("-> Planning %sSingle precision FFTW ... \n", inverse ? "inverse ":"");
@@ -171,12 +101,10 @@ double compute_sp_fftw(fftwf_complex *fftw_data, int N[3], int inverse){
     plan = fftwf_plan_dft_3d( N[0], N[1], N[2], &fftw_data[0], &fftw_data[0], FFTW_FORWARD, FFTW_ESTIMATE);
   }
   printf("-> Computing Single Precision FFTW\n");
-  double start = getTimeinMilliSec();
   fftwf_execute(plan);
-  double stop = getTimeinMilliSec();
 
   fftwf_destroy_plan(plan);
-  return (stop - start);
+  return 1;
 }
 /******************************************************************************
  * \brief  compute double precision fft3d using FFTW - single process CPU
@@ -185,7 +113,7 @@ double compute_sp_fftw(fftwf_complex *fftw_data, int N[3], int inverse){
  * \param  inverse : 1 for backward fft3d
  * \retval walltime of fftw execution measured in double precision
  *****************************************************************************/
-double compute_dp_fftw(fftw_complex *fftw_data, int N[3], int inverse){
+int compute_dp_fftw(fftw_complex *fftw_data, int N[3], int inverse){
   fftw_plan plan;
 
   printf("-> Planning %sDouble precision FFTW ... \n", inverse ? "inverse ":"");
@@ -197,12 +125,11 @@ double compute_dp_fftw(fftw_complex *fftw_data, int N[3], int inverse){
   }
 
   printf("-> Computing Double Precision FFTW\n");
-  double start = getTimeinMilliSec();
   fftw_execute(plan);
-  double stop = getTimeinMilliSec();
 
   fftw_destroy_plan(plan);
-  return (stop - start);
+
+  return 1;
 }
 
 /******************************************************************************
@@ -328,3 +255,7 @@ void compute_metrics( double fpga_runtime, double fpga_computetime, double fftw_
   fclose(fp);
 }
 
+/* Compute (K*L)%M accurately */
+double moda(int K, int L, int M){
+    return (double)(((long long)K * L) % M);
+}

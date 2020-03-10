@@ -2,18 +2,15 @@
  *  Author: Arjun Ramaswami
  *****************************************************************************/
 
-// global dependencies
 #include <stdio.h>
 #include <fftw3.h>
 
-// common dependencies
 #include "CL/opencl.h"
-#include "api/fft_api.h"  // Common declarations and API
-#include "api/fft_fpga.h"  // Common declarations and API
+#include "ext/include/argparse.h"
+#include "include/fftfpga.h"
 
-// local dependencies
-#include "common/argparse.h"  // Cmd-line Args to set some global vars
-#include "common/helper.h"  // Cmd-line Args to set some global vars
+#include "include/fft_api.h" 
+#include "include/helper.h"  
 
 static const char *const usage[] = {
     "bin/host [options]",
@@ -22,8 +19,11 @@ static const char *const usage[] = {
 
 void print_config(int N, int dim, int iter, int inv, int sp);
 
-void main(int argc, const char **argv) {
+int main(int argc, const char **argv) {
   int N = 64, dim = 1, iter = 1, inv = 0, sp = 0;
+  const char *path = NULL;
+  const char *platform = "Intel(R) FPGA";
+  fpga_t timing = {0.0, 0.0, 0.0};
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -33,6 +33,7 @@ void main(int argc, const char **argv) {
     OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
+    OPT_STRING('p', "path", &path, "path to bitstream"),
     OPT_END(),
   };
 
@@ -43,6 +44,71 @@ void main(int argc, const char **argv) {
 
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp);
+
+  fpga_initialize(platform);
+
+  // Select based on dimensions and precisions different functions
+  switch(dim){
+    case 1:
+      if(sp == 0){
+
+        double2 *inp = malloc(sizeof(double2) * N * iter);
+
+        fft_create_data(inp, N * iter);
+
+        fftfpga_c2c_1d(N, inp, inv);
+      } 
+      else{
+
+        float2 *inp = malloc(sizeof(float2) * N * iter);
+
+        fftf_create_data(inp, N * iter);
+
+        fftfpgaf_c2c_1d(N, inp, inv);
+      }
+      break;
+    case 2:
+      if(sp == 0){
+        double2 *inp = malloc(sizeof(double2) * N * N);
+
+        fft_create_data(inp, N * N * iter);
+
+        fftfpga_c2c_2d(N, inp, inv);
+      } 
+      else{
+        float2 *inp = malloc(sizeof(float2) * N * N);
+
+        fftf_create_data(inp, N * N * iter);
+
+        fftfpgaf_c2c_2d(N, inp, inv);
+      }
+      break;
+
+    case 3:
+      if(sp == 0){
+        double2 *inp = malloc(sizeof(double2) * N * N * N);
+
+        fft_create_data(inp, N * N * N * iter);
+
+        fftfpga_c2c_3d(N, inp, inv);
+      } 
+      else{
+        float2 *inp = malloc(sizeof(float2) * N * N * N);
+
+        fftf_create_data(inp, N * N * N * iter);
+
+        fftfpgaf_c2c_3d(N, inp, inv);
+      }
+      break;
+
+    default:
+      printf("Enter Dimension\n");
+      break;
+  }
+
+  // destroy data
+  fpga_final();
+
 
   /*
   // Allocate mem for input buffer and fftw buffer
@@ -132,6 +198,8 @@ void main(int argc, const char **argv) {
     fftw_free(fftw_dp_data);
   #endif 
   */
+
+  return 0;
 }
 
 void print_config(int N, int dim, int iter, int inv, int sp){

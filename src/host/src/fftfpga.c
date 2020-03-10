@@ -39,8 +39,21 @@ static double fftfpga_run_3d(int inverse, int N[3], cmplx *c_in);
 
 // --- CODE -------------------------------------------------------------------
 
-int fpga_initialize_(){
-   return init();
+int fpga_initialize(const char *platform_name){
+  cl_int status = 0;
+
+  // Check if this has to be sent as a pointer or value
+  // Get the OpenCL platform.
+  platform = findPlatform(platform_name);
+  if(platform == NULL) {
+    printf("ERROR: Unable to find %s OpenCL platform\n", platform_name);
+    return 0;
+  }
+  // Query the available OpenCL devices.
+  cl_uint num_devices;
+  devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
+
+  return 1;
 }
 
 void fpga_final_(){
@@ -55,42 +68,268 @@ void fpga_final_(){
  * \param  N - integer pointer to the size of the FFT3d
  * \retval true if fft3d size supported
  *****************************************************************************/
-int fpga_check_bitstream_(char *data_path, int N[3]){
-    static int fft_size[3] = { 0, 0, 0};
+int fpga_bitstream(char *bitstream_path){
+    int status = init_program(bitstream_path);
+    return status;
+}
 
-    // check the supported sizes
-    if( (N[0] == 16 && N[1] == 16 && N[2] == 16) ||
-        (N[0] == 32 && N[1] == 32 && N[2] == 32) ||
-        (N[0] == 64 && N[1] == 64 && N[2] == 64)  ){
+/******************************************************************************
+ * \brief   compute an in-place double precision complex 1D-FFT on the FPGA
+ * \param   N   : integer pointer to size of FFT3d  
+ * \param   inp : double2 pointer to input data of size N
+ * \param   inv : int toggle to activate backward FFT
+ * \retval fpga_t : time taken in milliseconds for data transfers and execution
+ *****************************************************************************/
+fpga_t fftfpga_c2c_1d(int N, double2 *inp, int inv, int iter){
+  fpga_t fft_time = {0.0, 0.0, 0.0};
 
-        // if first time
-        if( fft_size[0] == 0 && fft_size[1] == 0 && fft_size[2] == 0 ){
-          fft_size[0] = N[0];
-          fft_size[1] = N[1];
-          fft_size[2] = N[2];
+  printf("Launching");
+  if (inv) 
+	printf(" inverse");
+  printf(" FFT transform for %d iterations\n", iterations);
 
-          init_program(fft_size, data_path);
-        }
-        else if( fft_size[0] == N[0] && fft_size[1] == N[1] && fft_size[2] == N[2] ){
-          // if same fft size as previous
-          // dont do anything
-        }
-        else{
-            // else if different fft size as previous
-            // cleanup and initialize
-          fft_size[0] = N[0];
-          fft_size[1] = N[1];
-          fft_size[2] = N[2];
+#if SVM_API == 1
+  status = clEnqueueSVMMap(queue, CL_TRUE, CL_MAP_WRITE,
+      (void *)inp, sizeof(double2) * N * iterations, 0, NULL, NULL);
+  checkError(status, "Failed to map input data");
+#endif /* SVM_API == 1 */
 
-          cleanup_program();
-          init_program(fft_size, data_path);
-        }
+#if SVM_API == 1
+  status = clEnqueueSVMUnmap(queue, (void *)inp, 0, NULL, NULL);
+  checkError(status, "Failed to unmap input data");
+#else
+  // Create device buffers - assign the buffers in different banks for more efficient memory access 
+  double pcie_wr_time = 0.0, pcie_rd_time = 0.0;
 
-        return 1;
-    }
-    else{
-        return 0;
-    } 
+  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(double2) * N * iterations, NULL, &status);
+  checkError(status, "Failed to allocate input device buffer\n");
+
+  // TODO: check CL_CHANNEL_2_INTELFPGA
+  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(double2) * N * iterations, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+  // Copy data from host to device
+  pcie_wr_time = getCurrentTimestamp();
+
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(double2) * N * iterations, inp, 0, NULL, NULL);
+
+  fft_time.pcie_write_t = getCurrentTimestamp() - pcie_wr_time;
+  checkError(status, "Failed to copy data to device");
+#endif /* SVM_API == 1 */
+
+  // Can't pass bool to device, so convert it to int
+  int inverse_int = inv;
+
+  // Set the kernel arguments
+
+#if SVM_API == 1
+  status = clSetKernelArgSVMPointer(kernel1, 0, (void *)inp);
+  checkError(status, "Failed to set kernel1 arg 0");
+
+  status = clSetKernelArgSVMPointer(kernel, 0, (void *)out);
+#else
+  status = clSetKernelArg(kernel1, 0, sizeof(cl_mem), (void *)&d_inData);
+  checkError(status, "Failed to set kernel1 arg 0");
+  
+  status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+#endif /* SVM_API == 1 */
+  checkError(status, "Failed to set kernel arg 0");
+  status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*)&iterations);
+  checkError(status, "Failed to set kernel arg 1");
+  status = clSetKernelArg(kernel, 2, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set kernel arg 2");
+
+  printf(inverse ? "\tInverse FFT" : "\tFFT");
+  printf(" kernel initialization is complete.\n");
+
+  // Get the iterationstamp to evaluate performance
+  double time = getCurrentTimestamp();
+
+  // Launch the kernel - we launch a single work item hence enqueue a task
+  status = clEnqueueTask(queue, kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch kernel");
+
+  size_t ls = N/8;
+  size_t gs = iterations * ls;
+  status = clEnqueueNDRangeKernel(queue1, kernel1, 1, NULL, &gs, &ls, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
+  
+  // Wait for command queue to complete pending events
+  status = clFinish(queue);
+  checkError(status, "Failed to finish");
+  status = clFinish(queue1);
+  checkError(status, "Failed to finish queue1");
+  
+  // Record execution time
+  time = getCurrentTimestamp() - time;
+
+#if SVM_API == 0
+  // Copy results from device to host
+  pcie_rd_start = getCurrentTimestamp();
+  status = clEnqueueReadBuffer(queue, d_outData, CL_TRUE, 0, sizeof(float2) * N * iterations, h_outData, 0, NULL, NULL);
+  pcie_rd_time = getCurrentTimestamp() - pcie_rd_start;
+  checkError(status, "Failed to copy data from device");
+
+  printf("PCIe Write Transfer Time of %lfms for %d points of %lu bytes\n", pcie_wr_time * 1E3, N*iterations, sizeof(float2) * N * iterations);
+
+  printf("PCIe Read Transfer Time of %lfms for %d points of %lu bytes\n", pcie_rd_time * 1E3, N*iterations, sizeof(float2) * N * iterations);
+#else
+  status = clEnqueueSVMMap(queue, CL_TRUE, CL_MAP_READ,
+      (void *)h_outData, sizeof(float2) * N * iterations, 0, NULL, NULL);
+  checkError(status, "Failed to map out data");
+#endif /* SVM_API == 0 */
+
+  return fft_time;
+}
+
+/******************************************************************************
+ * \brief   compute an in-place single precision complex 1D-FFT on the FPGA
+ * \param   N   : integer pointer to size of FFT3d  
+ * \param   inp : float2 pointer to input data of size N
+ * \param   inv : int toggle to activate backward FFT
+ * \retval fpga_t : time taken in milliseconds for data transfers and execution
+ *****************************************************************************/
+fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, int inv, int iter){
+  fpga_t fft_time = {0.0, 0.0, 0.0};
+
+  printf("Launching");
+  if (inv) 
+	printf(" inverse");
+  printf(" FFT transform for %d iterations\n", iterations);
+
+#if SVM_API == 1
+  status = clEnqueueSVMMap(queue, CL_TRUE, CL_MAP_WRITE,
+      (void *)inp, sizeof(float2) * N * iterations, 0, NULL, NULL);
+  checkError(status, "Failed to map input data");
+#endif /* SVM_API == 1 */
+
+#if SVM_API == 1
+  status = clEnqueueSVMUnmap(queue, (void *)inp, 0, NULL, NULL);
+  checkError(status, "Failed to unmap input data");
+#else
+  // Create device buffers - assign the buffers in different banks for more efficient
+  // memory access 
+  double pcie_wr_time = 0.0, pcie_rd_time = 0.0;
+
+  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * iterations, NULL, &status);
+  checkError(status, "Failed to allocate input device buffer\n");
+
+  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * N * iterations, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+  // Copy data from host to device
+  pcie_wr_time = getCurrentTimestamp();
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * iterations, h_inData, 0, NULL, NULL);
+  fft_time.pcie_write_t = getCurrentTimestamp() - pcie_wr_time;
+  checkError(status, "Failed to copy data to device");
+#endif /* SVM_API == 1 */
+
+  // Can't pass bool to device, so convert it to int
+  int inverse_int = inv;
+
+  // Set the kernel arguments
+#if SVM_API == 0
+  status = clSetKernelArg(kernel1, 0, sizeof(cl_mem), (void *)&d_inData);
+  checkError(status, "Failed to set kernel1 arg 0");
+  
+  status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+#else
+  status = clSetKernelArgSVMPointer(kernel1, 0, (void *)h_inData);
+  checkError(status, "Failed to set kernel1 arg 0");
+
+  status = clSetKernelArgSVMPointer(kernel, 0, (void *)h_outData);
+#endif /* SVM_API == 0 */
+  checkError(status, "Failed to set kernel arg 0");
+  status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*)&iterations);
+  checkError(status, "Failed to set kernel arg 1");
+  status = clSetKernelArg(kernel, 2, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set kernel arg 2");
+
+  printf(inverse ? "\tInverse FFT" : "\tFFT");
+  printf(" kernel initialization is complete.\n");
+
+  // Get the iterationstamp to evaluate performance
+  double time = getCurrentTimestamp();
+
+  // Launch the kernel - we launch a single work item hence enqueue a task
+  status = clEnqueueTask(queue, kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch kernel");
+
+  size_t ls = N/8;
+  size_t gs = iterations * ls;
+  status = clEnqueueNDRangeKernel(queue1, kernel1, 1, NULL, &gs, &ls, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
+  
+  // Wait for command queue to complete pending events
+  status = clFinish(queue);
+  checkError(status, "Failed to finish");
+  status = clFinish(queue1);
+  checkError(status, "Failed to finish queue1");
+  
+  // Record execution time
+  time = getCurrentTimestamp() - time;
+
+#if SVM_API == 0
+  // Copy results from device to host
+  pcie_rd_start = getCurrentTimestamp();
+  status = clEnqueueReadBuffer(queue, d_outData, CL_TRUE, 0, sizeof(float2) * N * iterations, h_outData, 0, NULL, NULL);
+  pcie_rd_time = getCurrentTimestamp() - pcie_rd_start;
+  checkError(status, "Failed to copy data from device");
+
+  printf("PCIe Write Transfer Time of %lfms for %d points of %lu bytes\n", pcie_wr_time * 1E3, N*iterations, sizeof(float2) * N * iterations);
+
+  printf("PCIe Read Transfer Time of %lfms for %d points of %lu bytes\n", pcie_rd_time * 1E3, N*iterations, sizeof(float2) * N * iterations);
+#else
+  status = clEnqueueSVMMap(queue, CL_TRUE, CL_MAP_READ,
+      (void *)h_outData, sizeof(float2) * N * iterations, 0, NULL, NULL);
+  checkError(status, "Failed to map out data");
+#endif /* SVM_API == 0 */
+
+  return fft_time;
+}
+
+/******************************************************************************
+ * \brief   compute an in-place single precision complex 2D-FFT on the FPGA
+ * \param   N   : integer pointer to size of FFT3d  
+ * \param   inp : double2 pointer to input data of size N^2
+ * \param   inv : int toggle to activate backward FFT
+ * \retval fpga_t : time taken in milliseconds for data transfers and execution
+ *****************************************************************************/
+fpga_t fftfpga_c2c_2d(int N, double2 *inp, int inv){
+
+}
+
+/******************************************************************************
+ * \brief   compute an in-place single precision complex 2D-FFT on the FPGA
+ * \param   N   : integer pointer to size of FFT3d  
+ * \param   inp : float2 pointer to input data of size N^2
+ * \param   inv : int toggle to activate backward FFT
+ * \retval fpga_t : time taken in milliseconds for data transfers and execution
+ *****************************************************************************/
+fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, int inv){
+
+}
+
+/******************************************************************************
+ * \brief   compute an in-place double precision complex 3D-FFT on the FPGA
+ * \param   N   : integer pointer to size of FFT3d  
+ * \param   inp : double2 pointer to input data of size N^3
+ * \param   inv : int toggle to activate backward FFT
+ * \retval fpga_t : time taken in milliseconds for data transfers and execution
+ *****************************************************************************/
+fpga_t fftfpga_c2c_3d(int N, double2 *inp, int inv){
+
+}
+
+/******************************************************************************
+ * \brief   compute an in-place single precision complex 3D-FFT on the FPGA
+ * \param   N   : integer pointer to size of FFT3d  
+ * \param   inp : float2 pointer to input data of size N^3
+ * \param   inv : int toggle to activate backward FFT
+ * \retval fpga_t : time taken in milliseconds for data transfers and execution
+ *****************************************************************************/
+fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, int inv){
+
 }
 
 /******************************************************************************
@@ -140,7 +379,7 @@ static double fftfpga_run_3d(int inverse, int N[3], cmplx *c_in) {
   cl_kernel fft_kernel = NULL, fft_kernel_2 = NULL;
   cl_kernel fetch_kernel = NULL, transpose_kernel = NULL, transpose_kernel_2 = NULL;
   
-// Device memory buffers
+ // Device memory buffers
   cl_mem d_inData, d_outData;
 
   // Create the kernel - name passed in here must match kernel name in the
