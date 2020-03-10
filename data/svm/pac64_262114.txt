@@ -1,0 +1,17 @@
+Initialized BSP
+Using AOCX: fft1d.aocx
+
+Launching FFT transform for 262114 iterations
+	FFT kernel initialization is complete.
+Using SVM: Unmapping Output data
+	Processing time = 12.6283ms
+	Throughput = 1.3284 Gpoints / sec (39.8517 Gflops)
+	Signal to noise ratio on output sample: 137.865107 --> PASSED
+
+Launching inverse FFT transform for 262114 iterations
+	Inverse FFT kernel initialization is complete.
+Using SVM: Unmapping Output data
+	Processing time = 12.6116ms
+	Throughput = 1.3301 Gpoints / sec (39.9043 Gflops)
+	Signal to noise ratio on output sample: 137.620373 --> PASSED
+

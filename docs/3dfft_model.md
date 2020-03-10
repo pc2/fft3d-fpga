@@ -18,14 +18,31 @@ This can be modelled as (incomplete):
 
 | # SP Points | PCIe Est (ms) | PCIe Write (ms)<br>Measured | PCIe Read (ms)<br>Measured |
 |:-----------:|:-------------:|:---------------------------:|:--------------------------:|
-| 32^3        | 0.031         | 0.105                       | 0.110                      |
-| 64^3        | 0.253         | 0.44                        | 0.43                       |
-| 128^3       | 2.03          | 2.75                        | 2.75                       |
-| 256^3       | 16.24         | 21.3                        | 21.3                       |
+|     32^3    |     0.031     |            0.105            |            0.110           |
+|     64^3    |     0.253     |             0.44            |            0.43            |
+|    128^3    |      2.03     |             2.75            |            2.75            |
+|    256^3    |     16.24     |             21.3            |            21.3            |
+|    512^3    |     129.9     |                             |                            |
 
 SP = complex single precision floating point
 
 PCIe Latency is measured by timing the blocking `clEnqueueWriteBuffer ` and `clEnqueueReadBuffer` calls over an average of 1000 iterations.
+
+### SVM Data Transfer Latency
+
+| # SP Points | SVM latency (ms) | BW (GB) |
+|:-----------:|:--------:|:-------:|
+|     32^3    |   0.110  |  4.766  |
+|     64^3    |   0.227  |  18.47  |
+|    128^3    |   1.60   |  20.97  |
+|    256^3    |   12.62  |  21.27  |
+|    512^3    |   98.71  |  21.75  |
+
+SP points is the number of complex single precision points that are transferred using SVM from host to FPGA.
+
+SVM latency (ms) measures the time taken to transfer data back and forth. The experiment performs an N-point 1d FFT N$`^2`$ times, thereby requiring N$`^3`$ data. The read, FFT and writes are perfectly overlapping that it estimates the data transfer latencies. The delay is measured by timing the clEnqueueTask() calls for an average of 1000 iterations.
+
+Bandwidth (GB) is the bidirectional bandwidth obtained from latency and twice the data sent.
 
 ### DDR Memory access and transfer latency
 
