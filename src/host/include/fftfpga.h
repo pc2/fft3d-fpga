@@ -4,7 +4,6 @@
 
 #ifndef FFTFPGA_H
 #define FFTFPGA_H
-
 typedef struct {
   double x;
   double y;
@@ -22,30 +21,29 @@ typedef struct fpga_timing {
 } fpga_t;
 
 // Initialize FPGA
-int fpga_initialize();
+extern int fpga_initialize();
 
 // Finalize FPGA
-void fpga_final();
-
-// Check fpga bitstream present in directory
-int fpga_check_bitstream(char *data_path, int N[3]);
+extern void fpga_final();
 
 // Double Precision 1d FFT
-fpga_t fftfpga_c2c_1d(int N, double2 *inp, int inv, int iter);
+extern fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int iter);
 
 // Single Precision 1d FFT
-fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, int inv, int iter);
+extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter);
 
 // Double Precision 2d FFT
-fpga_t int fftfpga_c2c_2d(int N, double2 *inp, int inv);
+extern fpga_t fftfpga_c2c_2d(int N, double2 *inp, double2 *out, int inv, int iter);
 
 // Single Precision 2d FFT
-fpga_t int fftfpgaf_c2c_2d(int N, float2 *inp, int inv);
+extern fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, double2 *out, int inv, int iter);
 
 // Double Precision 3d FFT
-fpga_t int fftfpga_c2c_3d(int N, double2 *inp, int inv);
+extern fpga_t fftfpga_c2c_3d(int N, double2 *inp, double2 *out, int inv, int iter);
 
 // Single Precision 3d FFT
-fpga_t int fftfpgaf_c2c_3d(int N, float2 *inp, int inv);
+extern fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, double2 *out, int inv, int iter);
 
+// Allocate host side buffers to be 64-byte aligned
+extern void* alignedMalloc(size_t size);
 #endif

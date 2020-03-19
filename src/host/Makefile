@@ -15,7 +15,7 @@ endif
 DEBUG := 0
 
 # Compilers
-CC := gcc
+CC := gcc -std=c11
 
 # Compiler Flags
 CFLAGS := -march=native -Wall

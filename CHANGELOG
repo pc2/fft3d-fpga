@@ -2,9 +2,16 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- configurable platform name
+- choice of platform (currently chooses first platform)
+- choice of device (currently chooses first device)
+- array of queues instead of statically defined number
 
 ## [1.0.0] - []
 
 ### Added
 - 1d FFT, 2d FFT and 3d FFT
+- Coarse grained buffer SVM Support
 - CI/CD
+- gtests
+- CMake build

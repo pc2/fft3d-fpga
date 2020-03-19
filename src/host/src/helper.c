@@ -11,10 +11,8 @@
 #include <sys/time.h>
 #include <math.h>
 #define _USE_MATH_DEFINES
-#include <fftw3.h>
 
-// common dependencies
-#include "fft_api.h"
+#include "../include/fftfpga.h"
 
 // function definitions
 int coord(unsigned N, unsigned i, unsigned j, unsigned k);
@@ -78,59 +76,12 @@ double getTimeinMilliSec(){
  * \param  N : fft size
  * \retval linear offset in the flattened 3d matrix
  *****************************************************************************/
+/*
 unsigned coord(unsigned N[3], unsigned i, unsigned j, unsigned k) {
   // TODO : works only for uniform dims
   return i * N[0] * N[1] + j * N[2] + k;
 }
-
-/******************************************************************************
- * \brief  compute single precision fft3d using FFTW - single process CPU
- * \param  fftw_data : pointer to fft3d sized allocation of sp complex data for fftw cpu computation
- * \param  N[3] : fft size
- * \param  inverse : 1 for backward fft3d
- * \retval walltime of fftw execution measured in double precision
- *****************************************************************************/
-int compute_sp_fftw(fftwf_complex *fftw_data, int N[3], int inverse){
-  fftwf_plan plan;
-
-  printf("-> Planning %sSingle precision FFTW ... \n", inverse ? "inverse ":"");
-  if(inverse){
-    plan = fftwf_plan_dft_3d( N[0], N[1], N[2], &fftw_data[0], &fftw_data[0], FFTW_BACKWARD, FFTW_ESTIMATE);
-  }
-  else{
-    plan = fftwf_plan_dft_3d( N[0], N[1], N[2], &fftw_data[0], &fftw_data[0], FFTW_FORWARD, FFTW_ESTIMATE);
-  }
-  printf("-> Computing Single Precision FFTW\n");
-  fftwf_execute(plan);
-
-  fftwf_destroy_plan(plan);
-  return 1;
-}
-/******************************************************************************
- * \brief  compute double precision fft3d using FFTW - single process CPU
- * \param  fftw_data : pointer to fft3d sized allocation of dp complex data for fftw cpu computation
- * \param  N[3] : fft size
- * \param  inverse : 1 for backward fft3d
- * \retval walltime of fftw execution measured in double precision
- *****************************************************************************/
-int compute_dp_fftw(fftw_complex *fftw_data, int N[3], int inverse){
-  fftw_plan plan;
-
-  printf("-> Planning %sDouble precision FFTW ... \n", inverse ? "inverse ":"");
-  if(inverse){
-    plan = fftw_plan_dft_3d( N[0], N[1], N[2], &fftw_data[0], &fftw_data[0], FFTW_BACKWARD, FFTW_ESTIMATE);
-  }
-  else{
-    plan = fftw_plan_dft_3d( N[0], N[1], N[2], &fftw_data[0], &fftw_data[0], FFTW_FORWARD, FFTW_ESTIMATE);
-  }
-
-  printf("-> Computing Double Precision FFTW\n");
-  fftw_execute(plan);
-
-  fftw_destroy_plan(plan);
-
-  return 1;
-}
+*/
 
 /******************************************************************************
  * \brief  verify computed fft3d with FFTW fft3d
@@ -138,6 +89,7 @@ int compute_dp_fftw(fftw_complex *fftw_data, int N[3], int inverse){
  * \param  fftw_data : pointer to fft3d sized allocation of sp complex data for fftw cpu computation
  * \param  N : 3 element integer array containing the size of FFT3d  
  *****************************************************************************/
+/*
 void verify_sp_fft(float2 *fft_data, fftwf_complex *fftw_data, int N[3]){
   unsigned where, i, j, k;
   float mag_sum = 0, noise_sum = 0, magnitude, noise;
@@ -164,13 +116,14 @@ void verify_sp_fft(float2 *fft_data, fftwf_complex *fftw_data, int N[3]){
   float db = 10 * log(mag_sum / noise_sum) / log(10.0);
   printf("-> Signal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 }
-
+*/
 /******************************************************************************
  * \brief  verify computed fft3d with FFTW fft3d
  * \param  fft_data  : pointer to fft3d sized allocation of dp complex data for fpga
  * \param  fftw_data : pointer to fft3d sized allocation of dp complex data for fftw cpu computation
  * \param  N : 3 element integer array containing the size of FFT3d  
  *****************************************************************************/
+/*
 void verify_dp_fft(double2 *fft_data, fftw_complex *fftw_data, int N[3]){
   unsigned where, i, j, k;
   double mag_sum = 0, noise_sum = 0, magnitude, noise;
@@ -197,7 +150,7 @@ void verify_dp_fft(double2 *fft_data, fftw_complex *fftw_data, int N[3]){
   double db = 10 * log(mag_sum / noise_sum) / log(10.0);
   printf("-> Signal to noise ratio on output sample: %lf --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 }
-
+*/
 /******************************************************************************
  * \brief  print time taken for fpga and fftw runs to a file
  * \param  fftw_time, fpga_time: double
@@ -205,6 +158,7 @@ void verify_dp_fft(double2 *fft_data, fftw_complex *fftw_data, int N[3]){
  * \param  fname - filename given through cmd line arg
  * \param  N - fft size
  *****************************************************************************/
+/*
 void compute_metrics( double fpga_runtime, double fpga_computetime, double fftw_runtime, unsigned iter, int N[3]){
   char filename[] = "../outputfiles/output.csv";
   printf("Printing metrics to %s\n", filename);
@@ -221,6 +175,7 @@ void compute_metrics( double fpga_runtime, double fpga_computetime, double fftw_
   else{
     fp = fopen(filename,"a");
   }
+
 
   printf("\nNumber of runs: %d\n\n", iter);
   printf("\tFFT Size\tRuntime(ms)\tComputetime(ms)\tThroughput(GFLOPS/sec)\t\n");
@@ -254,8 +209,4 @@ void compute_metrics( double fpga_runtime, double fpga_computetime, double fftw_
 
   fclose(fp);
 }
-
-/* Compute (K*L)%M accurately */
-double moda(int K, int L, int M){
-    return (double)(((long long)K * L) % M);
-}
+*/

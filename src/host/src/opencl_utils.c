@@ -2,24 +2,20 @@
  *  Author: Arjun Ramaswami
  *****************************************************************************/
 
-// global dependencies
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#define _USE_MATH_DEFINES
-#include <string.h>
-#include <stdarg.h>
+#include <stdio.h>  
+#include <stdlib.h> // size_t, EXIT_FAILURE, NULL, EXIT_SUCCESS
+#include <string.h> // strlen, strstr
+#include <stdarg.h> // valist, va_start, va_end
 #include <unistd.h> // access in fileExists()
-#include "ctype.h"
+#include <ctype.h>  // tolower
 
-// common dependencies
 #include "CL/opencl.h"
+#include "../include/fftfpga.h"
 
 // function prototype
-static void tolowercase(char *p, char *q);
-static int getFolderPath(char **path, int N[3]);
-static size_t loadBinary(char *binary_path, char **buf);
-void cleanup();
+static void tolowercase(const char *p, char *q);
+static size_t loadBinary(const char *binary_path, char **buf);
+void fpga_final();
 void queue_cleanup();
 
 // --- CODE -------------------------------------------------------------------
@@ -29,8 +25,7 @@ void queue_cleanup();
  * \param   platform_name : search string
  * \retval  din : platform id
  *****************************************************************************/
-cl_platform_id findPlatform(char *platform_name){
-  unsigned int i;
+cl_platform_id findPlatform(const char *platform_name){
   cl_uint status;
 
   // Check if there are any platforms available
@@ -38,7 +33,7 @@ cl_platform_id findPlatform(char *platform_name){
   status = clGetPlatformIDs(0, NULL, &num_platforms);
   if (status != CL_SUCCESS){
     printf("Query for number of platforms failed\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   // Get ids of platforms available
@@ -47,7 +42,7 @@ cl_platform_id findPlatform(char *platform_name){
   if (status != CL_SUCCESS){
     printf("Query for platform ids failed\n");
     free(pids);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   // Convert argument string to lowercase to compare platform names
@@ -57,13 +52,13 @@ cl_platform_id findPlatform(char *platform_name){
 
   // Search the platforms for the platform name passed as argument
   size_t sz;
-  for(i=0; i<num_platforms; i++){
+  for(int i = 0; i < num_platforms; i++){
     // Get the size of the platform name referred to by the id
 		status = clGetPlatformInfo(pids[i], CL_PLATFORM_NAME, 0, NULL, &sz);
     if (status != CL_SUCCESS){
       printf("Query for platform info failed\n");
       free(pids);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 
     char pl_name[sz];
@@ -74,7 +69,7 @@ cl_platform_id findPlatform(char *platform_name){
     if (status != CL_SUCCESS){
       printf("Query for platform info failed\n");
       free(pids);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 
     tolowercase(pl_name, plat_name);
@@ -102,7 +97,7 @@ cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint
   status = clGetDeviceIDs(pid, device_type, 0, NULL, num_devices);
   if(status != CL_SUCCESS){
     printf("Query for number of devices failed\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   //  Based on the number of devices get their device ids
@@ -111,12 +106,12 @@ cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint
   if(status != CL_SUCCESS){
     printf("Query for device ids failed\n");
     free(dev_ids);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   return dev_ids;
 }
 
-static int fileExists(char* filename){
+static int fileExists(const char* filename){
   if( access( filename, R_OK ) != -1 ) {
     return 1;
   } else {
@@ -132,49 +127,21 @@ static int fileExists(char* filename){
  * \param   size of FFT3d
  * \retval  created program or NULL if unsuccessful
  *****************************************************************************/
-cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices, unsigned num_device, int N[3], char *data_path){
-  const int len_bin_path = 1000;
-  char bin_path[len_bin_path];
-  char *binary;
-  char *binaries[num_device];
-
-  size_t bin_size;
+cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices, unsigned num_device, const char *path){
+  char *binary, *binaries[num_device];
   cl_int bin_status, status;
 
-#ifdef __FPGA_SP
-  const char *subpath = "/../fpgabitstream/fft3d/synthesis_sp/";
-#else
-  const char *subpath = "/../fpgabitstream/fft3d/synthesis_dp/";
-#endif
-  char *foldername;
-  const char *filename = "fft3d.aocx";
-   
-  if( !getFolderPath(&foldername, N) ){
-    printf("Path not found for the size (%d,%d,%d)", N[0], N[1], N[2]);
-    return NULL;
-  }
-
-  int num_bytes = snprintf(bin_path, len_bin_path, "%s%s%s%s", data_path,subpath,foldername,filename );
-  if (num_bytes > len_bin_path){
-    printf("Insufficient buffer size to store path to binary\n");
-    free(foldername);
-    return NULL;
-  }
-
-  printf("Path to Binary : %s\n", bin_path);
-
-  if (!fileExists(bin_path)){
-    printf("File not found in path %s\n", bin_path);
-    free(foldername);
-    return NULL;
+  printf("Path to Binary : %s\n", path);
+  if (!fileExists(path)){
+    printf("File not found in path %s\n", path);
+    exit(EXIT_FAILURE);
   }
 
   // Load binary to character array
-  bin_size = loadBinary(bin_path, &binary);
+  size_t bin_size = loadBinary(path, &binary);
   if(bin_size == 0){
     printf("Could not load binary\n");
-    free(foldername);
-    return NULL;
+    exit(EXIT_FAILURE);
   }
 
   binaries[0] = binary;
@@ -184,80 +151,13 @@ cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices,
   if (status != CL_SUCCESS){
     printf("Query to create program with binary failed\n");
     free(binary);
-    free(foldername);
-    return NULL;
+    exit(EXIT_FAILURE);
   }
   free(binary);
-  free(foldername);
   return program;
 }
 
-int getFolderPath(char **folderPath, int N[3]){
-
-  //printf("Emulation %s\n", getenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA"));
-  char *emu = getenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA");
-  char *end;
-  unsigned emu_int;
-  if(emu != NULL){
-    emu_int = (unsigned) strtol(emu, &end , 10);
-  }
-
-  if( emu != NULL && emu_int == 1){
-    if( N[0] == 16 && N[1] == 16 && N[2] == 16){
-      char folder[] = "emulation/emu4/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    }
-    else if (N[0] == 32 && N[1] == 32 && N[2] == 32){
-      char folder[] = "emulation/emu5/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    } 
-    else if (N[0] == 64 && N[1] == 64 && N[2] == 64){
-      char folder[] = "emulation/emu6/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    }
-    else if (N[0] == 128 && N[1] == 128 && N[2] == 128){
-      char folder[] = "emulation/emu7/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    }
-    else {
-      return 0;
-    }
-  }
-  else{
-    if( N[0] == 16 && N[1] == 16 && N[2] == 16){
-      char folder[] = "syn16/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    }
-    else if (N[0] == 32 && N[1] == 32 && N[2] == 32){
-      char folder[] = "syn32/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    } 
-    else if (N[0] == 64 && N[1] == 64 && N[2] == 64){
-      char folder[] = "syn64/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    }
-    else if (N[0] == 128 && N[1] == 128 && N[2] == 128){
-      char folder[] = "syn128/";
-      *folderPath = malloc(strlen(folder)+1);
-      strncpy(*folderPath, folder, strlen(folder));
-    }
-    else {
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-static size_t loadBinary(char *binary_path, char **buf){
-
+static size_t loadBinary(const char *binary_path, char **buf){
   FILE *fp;
 
   // Open file and check if it exists
@@ -398,7 +298,7 @@ void _checkError(const char *file, int line, const char *func, cl_int err, const
     va_end(vl);
 
     queue_cleanup();
-    cleanup();
+    fpga_final();
     exit(err);
   }
 }
@@ -408,7 +308,7 @@ void _checkError(const char *file, int line, const char *func, cl_int err, const
  * \param   p : null-terminated string
  * \param   q : string with (strlen(p)+1) length 
  *****************************************************************************/
-static void tolowercase(char *p, char *q){
+static void tolowercase(const char *p, char *q){
   int i;
   char a;
   for(i=0; i<strlen(p);i++){

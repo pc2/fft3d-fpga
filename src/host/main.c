@@ -3,21 +3,20 @@
  *****************************************************************************/
 
 #include <stdio.h>
-#include <fftw3.h>
+#include <stdlib.h>
 
 #include "CL/opencl.h"
+
 #include "ext/include/argparse.h"
 #include "include/fftfpga.h"
-
-#include "include/fft_api.h" 
-#include "include/helper.h"  
+#include "include/helper.h"
 
 static const char *const usage[] = {
     "bin/host [options]",
     NULL,
 };
 
-void print_config(int N, int dim, int iter, int inv, int sp);
+static void print_config(int N, int dim, int iter, int inv, int sp);
 
 int main(int argc, const char **argv) {
   int N = 64, dim = 1, iter = 1, inv = 0, sp = 0;
@@ -52,21 +51,24 @@ int main(int argc, const char **argv) {
     case 1:
       if(sp == 0){
 
-        double2 *inp = malloc(sizeof(double2) * N * iter);
+        double2 *inp = (double2 *)alignedMalloc(sizeof(double2) * N * iter);
+        double2 *out = (double2 *)alignedMalloc(sizeof(double2) * N * iter);
 
         fft_create_data(inp, N * iter);
 
-        fftfpga_c2c_1d(N, inp, inv);
+        timing = fftfpga_c2c_1d(N, inp, out, inv, iter);
       } 
       else{
 
-        float2 *inp = malloc(sizeof(float2) * N * iter);
+        float2 *inp = (float2 *)alignedMalloc(sizeof(float2) * N * iter);
+        float2 *out = (float2 *)alignedMalloc(sizeof(float2) * N * iter);
 
         fftf_create_data(inp, N * iter);
 
-        fftfpgaf_c2c_1d(N, inp, inv);
+        timing = fftfpgaf_c2c_1d(N, inp, out, inv, iter);
       }
       break;
+  /*
     case 2:
       if(sp == 0){
         double2 *inp = malloc(sizeof(double2) * N * N);
@@ -100,6 +102,7 @@ int main(int argc, const char **argv) {
         fftfpgaf_c2c_3d(N, inp, inv);
       }
       break;
+  */
 
     default:
       printf("Enter Dimension\n");
