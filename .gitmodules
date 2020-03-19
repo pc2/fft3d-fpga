@@ -1,0 +1,3 @@
+[submodule "src/host/ext/argparse"]
+	path = src/host/ext/argparse
+	url = https://github.com/cofyc/argparse.git

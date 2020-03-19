@@ -7,7 +7,7 @@
 
 #include "CL/opencl.h"
 
-#include "ext/include/argparse.h"
+#include "ext/argparse/argparse.h"
 #include "include/fftfpga.h"
 #include "include/helper.h"
 
