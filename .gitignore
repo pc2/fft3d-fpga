@@ -1,4 +1,6 @@
 bin/
+build/
+extern/
 fpgabitstream/
 scripts/
 reports/
