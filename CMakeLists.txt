@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 2.8.4)
-project(fft-fpga)
+cmake_minimum_required(VERSION 3.1)
+project(fft-fpga VERSION 0.1
+                 DESCRIPTION "Library for FFT using FPGAs"
+                 LANGUAGES C)
 
 # Specify C++11 Standard
-#set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/extern/hlslib/cmake)
 
@@ -23,7 +24,5 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 endif()
 
 find_package(IntelFPGAOpenCL)
-
-add_executable(src/bin/host ${SOURCES})
 
 add_subdirectory(src/host)
