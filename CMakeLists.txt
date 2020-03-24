@@ -1,10 +1,13 @@
-cmake_minimum_required(VERSION 3.1)
-project(fft-fpga VERSION 0.1
-                 DESCRIPTION "Library for FFT using FPGAs"
-                 LANGUAGES C)
+cmake_minimum_required(VERSION 3.15)
 
-# Specify C++11 Standard
+project(fft-fpga VERSION 0.1
+            DESCRIPTION "Library for FFT using FPGAs"
+            LANGUAGES C CXX)
+
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
+
+enable_testing()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/extern/hlslib/cmake)
 
@@ -26,3 +29,4 @@ endif()
 find_package(IntelFPGAOpenCL)
 
 add_subdirectory(src/host)
+add_subdirectory(tests)

@@ -1,14 +1,22 @@
+cmake_minimum_required(VERSION 3.15)
 
-include_directories(${CMAKE_SOURCE_DIR}/extern/argparse)
-include_directories(${CMAKE_SOURCE_DIR}/src/host/include)
-include_directories(${IntelFPGAOpenCL_INCLUDE_DIRS})
+set(This fft_fpga)
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fsanitize=leak -ggdb")
+include_directories(
+  ${CMAKE_SOURCE_DIR}/extern/argparse
+  ${CMAKE_SOURCE_DIR}/src/host/include
+  ${IntelFPGAOpenCL_INCLUDE_DIRS}
+)
 
-file(GLOB_RECURSE SOURCES "*.c")
-set(SOURCES ${SOURCES} ${CMAKE_SOURCE_DIR}/extern/argparse/argparse.c)
-#target_compile_definitions(../../bin/host_debug PRIVATE -DDEBUG)
+set(Sources_dir ${CMAKE_SOURCE_DIR}/src/host)
+set(Sources 
+      ${CMAKE_SOURCE_DIR}/extern/argparse/argparse.c
+      ${Sources_dir}/main.c
+      ${Sources_dir}/src/fftfpga.c 
+      ${Sources_dir}/src/helper.c
+      ${Sources_dir}/src/opencl_utils.c
+)
 
-add_executable(fft_fpga ${SOURCES})
+add_executable(${This} ${Sources})
 
-target_link_libraries(fft_fpga PUBLIC ${IntelFPGAOpenCL_LIBRARIES})
+target_link_libraries(${This} PUBLIC ${IntelFPGAOpenCL_LIBRARIES})
