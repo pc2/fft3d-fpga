@@ -7,7 +7,9 @@ project(fft-fpga VERSION 0.1
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
-enable_testing()
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  enable_testing()
+endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/extern/hlslib/cmake)
 
@@ -29,4 +31,7 @@ endif()
 find_package(IntelFPGAOpenCL)
 
 add_subdirectory(src/host)
-add_subdirectory(tests)
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(tests)
+endif()

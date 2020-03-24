@@ -15,7 +15,7 @@ set(Sources_dir ${CMAKE_SOURCE_DIR}/src/host)
 
 set(Sources 
   ${CMAKE_SOURCE_DIR}/extern/argparse/argparse.c
-  ${Sources_dir}/main.c
+#  ${Sources_dir}/main.c
   ${Sources_dir}/src/fftfpga.c 
   ${Sources_dir}/src/helper.c
   ${Sources_dir}/src/opencl_utils.c
