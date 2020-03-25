@@ -23,7 +23,7 @@ void queue_cleanup();
 /******************************************************************************
  * \brief   return the first platform id with the name passed as argument
  * \param   platform_name : search string
- * \retval  din : platform id
+ * \retval  platform_id
  *****************************************************************************/
 cl_platform_id findPlatform(const char *platform_name){
   cl_uint status;
@@ -120,7 +120,7 @@ static int fileExists(const char* filename){
 }
 
 /******************************************************************************
- * \brief   returns the list of all devices for the specific platform
+ * \brief   returns the program created from the binary found in the path.
  * \param   context created using device
  * \param   array of devices
  * \param   number of devices found
@@ -134,14 +134,14 @@ cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices,
   printf("Path to Binary : %s\n", path);
   if (!fileExists(path)){
     printf("File not found in path %s\n", path);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   // Load binary to character array
   size_t bin_size = loadBinary(path, &binary);
   if(bin_size == 0){
     printf("Could not load binary\n");
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   binaries[0] = binary;
@@ -151,7 +151,7 @@ cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices,
   if (status != CL_SUCCESS){
     printf("Query to create program with binary failed\n");
     free(binary);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
   free(binary);
   return program;

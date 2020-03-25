@@ -79,6 +79,7 @@ int fpga_initialize(const char *platform_name, const char *path){
   program = getProgramWithBinary(context, &device, 1, path);
   if(program == NULL) {
     printf("Failed to create program");
+    fpga_final();
     exit(EXIT_FAILURE);
   }
   // Build the program that was just created.
