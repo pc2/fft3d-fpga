@@ -44,7 +44,9 @@ int main(int argc, const char **argv) {
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp);
 
-  fpga_initialize(platform);
+  if(!fpga_initialize(platform)){
+    return 0;
+  }
 
   // Select based on dimensions and precisions different functions
   switch(dim){

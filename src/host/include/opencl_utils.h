@@ -18,13 +18,9 @@ cl_platform_id findPlatform(const char *platform_name);
 cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint *num_devices);
 
 // OpenCL program created for all the devices of the context with the same binary
-cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices, unsigned num_devices, const char *data_path);
-
-void openCLContextCallBackFxn(const char *errinfo, const void *private_info, size_t cb, void *user_data);
+cl_program getProgramWithBinary(cl_context context, cl_device_id *devices, cl_uint num_devices, const char *data_path);
 
 void* alignedMalloc(size_t size);
-
-void printError(cl_int error);
 
 void _checkError(const char *file, int line, const char *func, cl_int err, const char *msg, ...);
 

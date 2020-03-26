@@ -37,16 +37,25 @@ void queue_cleanup();
 int fpga_initialize(const char *platform_name, const char *path){
   cl_int status = 0;
 
+  if(path == NULL){
+    fprintf(stderr, "Path to binary missing\n");
+    return 0;
+  }
+
   // Check if this has to be sent as a pointer or value
   // Get the OpenCL platform.
   platform = findPlatform(platform_name);
   if(platform == NULL) {
-    printf("ERROR: Unable to find %s OpenCL platform\n", platform_name);
+    fprintf(stderr, "ERROR: Unable to find %s OpenCL platform\n", platform_name);
     return 0;
   }
   // Query the available OpenCL devices.
   cl_uint num_devices;
   devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
+  if(devices == NULL){
+    fprintf(stderr, "ERROR: Unable to find devices for %s OpenCL platform\n", platform_name);
+    return 0;
+  }
 
   // use the first device.
   device = devices[0];
@@ -64,7 +73,7 @@ int fpga_initialize(const char *platform_name, const char *path){
    checkError(status, "Failed to get device info");
 
    if (!(caps & CL_DEVICE_SVM_COARSE_GRAIN_BUFFER)) {
-    printf("The host is compiled with SVM_API, however the device currently being targeted does not support SVM.\n");
+    fprintf(stderr, "The host is compiled with SVM_API, however the device currently being targeted does not support SVM.\n");
     // Free the resources allocated
     fpga_final();
     exit(EXIT_FAILURE);
@@ -72,13 +81,13 @@ int fpga_initialize(const char *platform_name, const char *path){
 #endif // SVM_API == 1 
 
   // Create the context.
-  context = clCreateContext(NULL, 1, &device, &openCLContextCallBackFxn, NULL, &status);
+  context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
   checkError(status, "Failed to create context");
 
   // Create the program.
   program = getProgramWithBinary(context, &device, 1, path);
   if(program == NULL) {
-    printf("Failed to create program");
+    fprintf(stderr, "Failed to create program\n");
     fpga_final();
     exit(EXIT_FAILURE);
   }
@@ -96,14 +105,14 @@ void fpga_final(){
     clReleaseContext(context);
   free(devices);
 }
-/******************************************************************************
+/**
  * \brief   compute an in-place double precision complex 1D-FFT on the FPGA
  * \param   N   : integer pointer to size of FFT3d  
  * \param   inp : double2 pointer to input data of size N
  * \param   inv : int toggle to activate backward FFT
  * \param   iter : int toggle to activate backward FFT
- * \retval fpga_t : time taken in milliseconds for data transfers and execution
- *****************************************************************************/
+ * \return fpga_t : time taken in milliseconds for data transfers and execution
+ */
 fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int iter){
   fpga_t fft_time = {0.0, 0.0, 0.0};
   cl_kernel kernel1 = NULL, kernel2 = NULL;

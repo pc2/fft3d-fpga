@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 - choice of platform (currently chooses first platform)
 - choice of device (currently chooses first device)
 - array of queues instead of statically defined number
+- loads binary to multiple devices (currently only the first device)
 
 ## [1.0.0] - []
 

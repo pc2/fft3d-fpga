@@ -10,21 +10,20 @@
 #include <ctype.h>  // tolower
 
 #include "CL/opencl.h"
+#include "../include/opencl_utils.h"
 #include "../include/fftfpga.h"
 
 // function prototype
 static void tolowercase(const char *p, char *q);
 static size_t loadBinary(const char *binary_path, char **buf);
-void fpga_final();
-void queue_cleanup();
+//void fpga_final();
+//void queue_cleanup();
 
-// --- CODE -------------------------------------------------------------------
-
-/******************************************************************************
- * \brief   return the first platform id with the name passed as argument
- * \param   platform_name : search string
- * \retval  platform_id
- *****************************************************************************/
+/**
+ * \brief  returns the first platform id with the name passed as argument
+ * \param  platform_name: string to search for platform of particular name
+ * \return platform_id (is a typedef struct*) or NULL if not found 
+ */
 cl_platform_id findPlatform(const char *platform_name){
   cl_uint status;
 
@@ -32,48 +31,46 @@ cl_platform_id findPlatform(const char *platform_name){
   cl_uint num_platforms;
   status = clGetPlatformIDs(0, NULL, &num_platforms);
   if (status != CL_SUCCESS){
-    printf("Query for number of platforms failed\n");
-    exit(EXIT_FAILURE);
+    fprintf(stderr, "Query for number of platforms failed\n");
+    return NULL;
   }
 
   // Get ids of platforms available
   cl_platform_id *pids = (cl_platform_id*) malloc(sizeof(cl_platform_id) * num_platforms);
   status = clGetPlatformIDs(num_platforms, pids, NULL);
   if (status != CL_SUCCESS){
-    printf("Query for platform ids failed\n");
+    fprintf(stderr, "Query for platform ids failed\n");
     free(pids);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   // Convert argument string to lowercase to compare platform names
-  size_t pl_len = strlen(platform_name);
-  char name_search[pl_len + 1];
+  size_t pl_len = strlen(platform_name);  // needs boundary check?
+  char name_search[pl_len + 1];   // VLA
   tolowercase(platform_name, name_search);
 
   // Search the platforms for the platform name passed as argument
-  size_t sz;
   for(int i = 0; i < num_platforms; i++){
     // Get the size of the platform name referred to by the id
+    size_t sz;
 		status = clGetPlatformInfo(pids[i], CL_PLATFORM_NAME, 0, NULL, &sz);
     if (status != CL_SUCCESS){
-      printf("Query for platform info failed\n");
+      fprintf(stderr, "Query for platform info failed\n");
       free(pids);
-      exit(EXIT_FAILURE);
+      return NULL;
     }
-
-    char pl_name[sz];
-    char plat_name[sz];
 
     // Store the name of string size
-	  status = clGetPlatformInfo(pids[i], CL_PLATFORM_NAME, sz, pl_name, NULL);
+    char plat_name[sz], plat_name_lc[sz];
+	  status = clGetPlatformInfo(pids[i], CL_PLATFORM_NAME, sz, plat_name, NULL);
     if (status != CL_SUCCESS){
-      printf("Query for platform info failed\n");
+      fprintf(stderr, "Query for platform info failed\n");
       free(pids);
-      exit(EXIT_FAILURE);
+      return NULL;
     }
 
-    tolowercase(pl_name, plat_name);
-    if( strstr(plat_name, name_search)){
+    tolowercase(plat_name, plat_name_lc);
+    if( strstr(plat_name_lc, name_search)){
       cl_platform_id pid = pids[i];
       free(pids);
       return pid;
@@ -83,30 +80,30 @@ cl_platform_id findPlatform(const char *platform_name){
   return NULL;
 }
 
-/******************************************************************************
- * \brief   returns the list of all devices for the specfic platform
- * \param   platform id to search for devices 
- * \param   specific type of device to search for
- * \param   total number of devices found for the given platform
- * \retval  array of device ids
- *****************************************************************************/
+/**
+ * \brief  gets the list of all devices for the specfic platform
+ * \param  platform_id: id of the platform to search for devices
+ * \param  specific type of device to search for
+ * \param  total number of devices found for the given platform
+ * \return array of device ids or NULL if not found
+ */
 cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint *num_devices) {
   cl_int status;
 
   // Query for number of devices
   status = clGetDeviceIDs(pid, device_type, 0, NULL, num_devices);
   if(status != CL_SUCCESS){
-    printf("Query for number of devices failed\n");
-    exit(EXIT_FAILURE);
+    fprintf(stderr, "Query for number of devices failed\n");
+    return NULL;
   }
 
   //  Based on the number of devices get their device ids
   cl_device_id *dev_ids = (cl_device_id*) malloc(sizeof(cl_device_id) * (*num_devices));
   status = clGetDeviceIDs(pid, device_type, *num_devices, dev_ids, NULL);
   if(status != CL_SUCCESS){
-    printf("Query for device ids failed\n");
+    fprintf(stderr, "Query for device ids failed\n");
     free(dev_ids);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
   return dev_ids;
 }
@@ -119,28 +116,28 @@ static int fileExists(const char* filename){
   }
 }
 
-/******************************************************************************
- * \brief   returns the program created from the binary found in the path.
- * \param   context created using device
- * \param   array of devices
- * \param   number of devices found
- * \param   size of FFT3d
- * \retval  created program or NULL if unsuccessful
- *****************************************************************************/
-cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices, unsigned num_device, const char *path){
-  char *binary, *binaries[num_device];
+/**
+ * \brief  returns the program created from the binary found in the path.
+ * \param  context: context created using device
+ * \param  devices: array of devices
+ * \param  num_devices: number of devices to load binaries into
+ * \param  path: path to binary
+ * \retval created program or NULL if unsuccessful
+ */
+cl_program getProgramWithBinary(cl_context context, cl_device_id *devices, cl_uint num_devices, const char *path){
+  char *binary, *binaries[num_devices];
   cl_int bin_status, status;
 
-  printf("Path to Binary : %s\n", path);
+  //printf("Path to Binary : %s\n", path);
   if (!fileExists(path)){
-    printf("File not found in path %s\n", path);
+    fprintf(stderr, "File not found in path %s\n", path);
     return NULL;
   }
 
   // Load binary to character array
   size_t bin_size = loadBinary(path, &binary);
   if(bin_size == 0){
-    printf("Could not load binary\n");
+    fprintf(stderr, "Could not load binary\n");
     return NULL;
   }
 
@@ -149,7 +146,7 @@ cl_program getProgramWithBinary(cl_context context, const cl_device_id *devices,
   // Create the program.
   cl_program program = clCreateProgramWithBinary(context, 1, devices, &bin_size, (const unsigned char **) binaries, &bin_status, &status);
   if (status != CL_SUCCESS){
-    printf("Query to create program with binary failed\n");
+    fprintf(stderr, "Query to create program with binary failed\n");
     free(binary);
     return NULL;
   }
@@ -183,14 +180,14 @@ static size_t loadBinary(const char *binary_path, char **buf){
   return bin_size;
 }
 
-/******************************************************************************
- * \brief   Allocate host side buffers to be 64-byte aligned to make use of DMA 
- *          transfer between host and global memory
- * \param   size in bytes : allocate size bytes multiples of 64
- * \retval  pointer to allocated memory on successful allocation otherwise NULL
- *****************************************************************************/
-const unsigned OPENCL_ALIGNMENT = 64;
+/**
+ * \brief  Allocate host side buffers to be 64-byte aligned to make use of DMA 
+ *         transfer between host and global memory
+ * \param  size in bytes : allocate size bytes multiples of 64
+ * \return pointer to allocated memory on successful allocation otherwise NULL
+ */
 void* alignedMalloc(size_t size){
+  const unsigned OPENCL_ALIGNMENT = 64;
   void *memptr = NULL;
   int ret = posix_memalign(&memptr, OPENCL_ALIGNMENT, size);
   if (ret != 0){
@@ -199,86 +196,82 @@ void* alignedMalloc(size_t size){
   return memptr;
 }
 
-void openCLContextCallBackFxn(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
-  printf("Context Callback - %s\n", errinfo);
-}
-
-void printError(cl_int error) {
+static void printError(cl_int error) {
 
   switch(error)
   {
     case CL_INVALID_PLATFORM:
-      printf("CL_PLATFORM NOT FOUND OR INVALID ");
+      fprintf(stderr, "CL_PLATFORM NOT FOUND OR INVALID ");
       break;
     case CL_INVALID_DEVICE:
-      printf("CL_DEVICE NOT FOUND OR INVALID OR DOESN'T MATCH THE PLATFORM ");
+      fprintf(stderr, "CL_DEVICE NOT FOUND OR INVALID OR DOESN'T MATCH THE PLATFORM ");
       break;
     case CL_INVALID_CONTEXT:
-      printf("CL_CONTEXT INVALID ");
+      fprintf(stderr, "CL_CONTEXT INVALID ");
       break;
     case CL_OUT_OF_HOST_MEMORY:
-      printf("FAILURE TO ALLOCATE RESOURCES BY OPENCL");
+      fprintf(stderr, "FAILURE TO ALLOCATE RESOURCES BY OPENCL");
       break;
     case CL_DEVICE_NOT_AVAILABLE:
-      printf("CL_DEVICE NOT AVAILABLE ALTHOUGH FOUND");
+      fprintf(stderr, "CL_DEVICE NOT AVAILABLE ALTHOUGH FOUND");
       break;
     case CL_INVALID_QUEUE_PROPERTIES:
-      printf("CL_QUEUE PROPERTIES INVALID");
+      fprintf(stderr, "CL_QUEUE PROPERTIES INVALID");
       break;
     case CL_INVALID_PROGRAM:
-      printf("CL_PROGRAM INVALID");
+      fprintf(stderr, "CL_PROGRAM INVALID");
       break;
     case CL_INVALID_BINARY:
-      printf("CL_BINARY INVALID");
+      fprintf(stderr, "CL_BINARY INVALID");
       break;
     case CL_INVALID_KERNEL_NAME:
-      printf("CL_KERNEL_NAME INVALID");
+      fprintf(stderr, "CL_KERNEL_NAME INVALID");
       break;
     case CL_INVALID_KERNEL_DEFINITION:
-      printf("CL_KERNEL_DEFN INVALID");
+      fprintf(stderr, "CL_KERNEL_DEFN INVALID");
       break;
     case CL_INVALID_VALUE:
-      printf("CL_VALUE INVALID");
+      fprintf(stderr, "CL_VALUE INVALID");
       break;
     case CL_INVALID_BUFFER_SIZE:
-      printf("CL_BUFFER_SIZE INVALID");
+      fprintf(stderr, "CL_BUFFER_SIZE INVALID");
       break;
     case CL_INVALID_HOST_PTR:
-      printf("CL_HOST_PTR INVALID");
+      fprintf(stderr, "CL_HOST_PTR INVALID");
       break;
     case CL_INVALID_COMMAND_QUEUE:
-      printf("CL_COMMAND_QUEUE INVALID");
+      fprintf(stderr, "CL_COMMAND_QUEUE INVALID");
       break;
     case CL_INVALID_MEM_OBJECT:
-      printf("CL_MEM_OBJECT INVALID");
+      fprintf(stderr, "CL_MEM_OBJECT INVALID");
       break;
     case CL_MEM_OBJECT_ALLOCATION_FAILURE:
-      printf("CL_MEM_OBJECT_ALLOCATION INVALID");
+      fprintf(stderr, "CL_MEM_OBJECT_ALLOCATION INVALID");
       break;
     case CL_INVALID_ARG_INDEX:
-      printf("CL_ARG_INDEX INVALID");
+      fprintf(stderr, "CL_ARG_INDEX INVALID");
       break;
     case CL_INVALID_ARG_VALUE:
-      printf("CL_ARG_VALUE INVALID");
+      fprintf(stderr, "CL_ARG_VALUE INVALID");
       break;
     case CL_INVALID_ARG_SIZE:
-      printf("CL_ARG_SIZE INVALID");
+      fprintf(stderr, "CL_ARG_SIZE INVALID");
       break;
     case CL_INVALID_PROGRAM_EXECUTABLE:
-      printf("CL_PROGRAM_EXEC INVALID");
+      fprintf(stderr, "CL_PROGRAM_EXEC INVALID");
       break;
     case CL_INVALID_KERNEL:
-      printf("CL_KERNEL INVALID");
+      fprintf(stderr, "CL_KERNEL INVALID");
       break;
     case CL_INVALID_KERNEL_ARGS:
-      printf("CL_KERNEL_ARG INVALID");
+      fprintf(stderr, "CL_KERNEL_ARG INVALID");
       break;
     case CL_INVALID_WORK_GROUP_SIZE:
-      printf("CL_WORK_GROUP_SIZE INVALID");
+      fprintf(stderr, "CL_WORK_GROUP_SIZE INVALID");
       break;
 
     default:
-      printf("UNKNOWN ERROR %d\n", error);
+      fprintf(stderr, "UNKNOWN ERROR %d\n", error);
   }
 
 }
@@ -303,15 +296,14 @@ void _checkError(const char *file, int line, const char *func, cl_int err, const
   }
 }
 
-/******************************************************************************
- * \brief   converts a given null-terminated string to lowercase and stores in q
- * \param   p : null-terminated string
- * \param   q : string with (strlen(p)+1) length 
- *****************************************************************************/
+/**
+ * \brief  converts a given null-terminated string to lowercase and stores in q
+ * \param  p : null-terminated string
+ * \param  q : string in lowercase with (strlen(p)+1) length 
+ */
 static void tolowercase(const char *p, char *q){
-  int i;
   char a;
-  for(i=0; i<strlen(p);i++){
+  for(int i=0; i < strlen(p);i++){
     a = tolower(p[i]);
     q[i] = a;
   }
