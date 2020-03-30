@@ -1,3 +1,5 @@
+#  Author: Arjun Ramaswami
+
 cmake_minimum_required(VERSION 3.15)
 
 set(This test_fft_fpga)
@@ -23,6 +25,8 @@ set(Sources
 
 set(TestSources
   ${CMAKE_SOURCE_DIR}/tests/test_opencl_utils.cpp
+  ${CMAKE_SOURCE_DIR}/tests/test_fft_fpga.cpp
+  ${CMAKE_SOURCE_DIR}/tests/test_helper.cpp
 )
 
 add_executable(${This} ${Sources} ${TestSources})
