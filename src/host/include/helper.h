@@ -5,10 +5,7 @@
 #ifndef HELPER_H
 #define HELPER_H
 
-
-void fft_create_data(double2 *inp, int N);
-
-void fftf_create_data(float2 *inp, int N);
+int fftf_create_data(float2 *inp, int N);
 
 /*
 double compute_sp_fftw(float2 *fftw_data, int N[3], int inverse);

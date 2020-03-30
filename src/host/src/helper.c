@@ -6,66 +6,61 @@
 #define _POSIX_C_SOURCE 199309L  
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include <math.h>
-#define _USE_MATH_DEFINES
+//#define _USE_MATH_DEFINES
 
 #include "../include/fftfpga.h"
+#include "../include/helper.h"
 
-// function definitions
-int coord(unsigned N, unsigned i, unsigned j, unsigned k);
+/**
+ * \brief  create random single precision floating point values  
+ * \param  inp : pointer to float data of size N 
+ * \param  N   : number of points in the array
+ * \return status : 
+ *            -1 : zero or negative
+ *            -2 : greater than 1024
+ */
+int fftf_create_data(float2 *inp, int N){
 
-// --- CODE ------------------------------------------------------------------
-
-/******************************************************************************
- * \brief  create random single precision floating point values for FFT 
- *         computation or read existing ones if already saved in a file
- * \param  fft_data  : pointer to fft3d sized allocation of sp complex data for fpga
- * \param  N : 3 element integer array containing the size of FFT3d  
- *****************************************************************************/
-void fft_create_data(double2 *inp, int N){
-
-  for(int i = 0; i < N; i++){
-
-    inp[i].x = (double)((double)rand() / (double)RAND_MAX);
-    inp[i].y = (double)((double)rand() / (double)RAND_MAX);
-
-#ifdef DEBUG          
-    printf(" %d : fft[%d] = (%lf, %lf) \n", i, i, inp[i].x, inp[i].y);
-#endif
+  if(inp == NULL){
+    return 0;
+  }
+  else if(N <= 0){
+    return -1;
+  }
+  else if(N > 1024){
+    return -2;
   }
 
-}
-
-/******************************************************************************
- * \brief  create random double precision floating point values for FFT 
- *         computation or read existing ones if already saved in a file
- * \param  fft_data  : pointer to fft3d sized allocation of dp complex data for fpga
- * \param  N : 3 element integer array containing the size of FFT3d  
- *****************************************************************************/
-void fftf_create_data(float2 *inp, int N){
-
   for(int i = 0; i < N; i++){
-
     inp[i].x = (float)((float)rand() / (float)RAND_MAX);
     inp[i].y = (float)((float)rand() / (float)RAND_MAX);
-
-#ifdef DEBUG          
-    printf(" %d : fft[%d] = (%lf, %lf) \n", i, i, inp[i].x, inp[i].y);
-#endif
   }
 
+#ifdef DEBUG          
+    FILE *fptr = fopen("input_data.txt", "w"); 
+    for(int i = 0; i < N; i++){
+      if (fptr != NULL){
+        fprintf(fptr, "%d : fft[%d] = (%f, %f) \n", i, i, inp[i].x, inp[i].y);
+      }
+    }
+    fclose(fptr); 
+#endif
+
+  return 1;
 }
 
-/******************************************************************************
+/**
  * \brief  compute walltime in milliseconds
- * \retval time in milliseconds
- *****************************************************************************/
+ * \return time in milliseconds
+ */
 double getTimeinMilliSec(){
    struct timespec a;
-   clock_gettime(CLOCK_MONOTONIC, &a);
+   if(clock_gettime(CLOCK_MONOTONIC, &a) != 0){
+     fprintf(stderr, "Error in getting wall clock time \n");
+     exit(EXIT_FAILURE);
+   }
    return (double)(a.tv_nsec) * 1.0e-6 + (double)(a.tv_sec) * 1.0E3;
 }
 

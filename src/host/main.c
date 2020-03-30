@@ -44,7 +44,7 @@ int main(int argc, const char **argv) {
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp);
 
-  if(!fpga_initialize(platform)){
+  if(!fpga_initialize(platform, path)){
     return 0;
   }
 
@@ -52,16 +52,9 @@ int main(int argc, const char **argv) {
   switch(dim){
     case 1:
       if(sp == 0){
-
-        double2 *inp = (double2 *)alignedMalloc(sizeof(double2) * N * iter);
-        double2 *out = (double2 *)alignedMalloc(sizeof(double2) * N * iter);
-
-        fft_create_data(inp, N * iter);
-
-        timing = fftfpga_c2c_1d(N, inp, out, inv, iter);
+        printf("Work under Progress\n");
       } 
       else{
-
         float2 *inp = (float2 *)alignedMalloc(sizeof(float2) * N * iter);
         float2 *out = (float2 *)alignedMalloc(sizeof(float2) * N * iter);
 
@@ -113,7 +106,6 @@ int main(int argc, const char **argv) {
 
   // destroy data
   fpga_final();
-
 
   /*
   // Allocate mem for input buffer and fftw buffer

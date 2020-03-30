@@ -4,14 +4,15 @@
 
 #ifndef FFTFPGA_H
 #define FFTFPGA_H
-typedef struct {
-  double x;
-  double y;
-} float2;
 
 typedef struct {
   float x;
   float y;
+} float2;
+
+typedef struct {
+  double x;
+  double y;
 } double2;
 
 typedef struct fpga_timing {
@@ -21,7 +22,7 @@ typedef struct fpga_timing {
 } fpga_t;
 
 // Initialize FPGA
-extern int fpga_initialize();
+extern int fpga_initialize(const char *platform_name, const char *path);
 
 // Finalize FPGA
 extern void fpga_final();
