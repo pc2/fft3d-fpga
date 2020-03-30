@@ -16,7 +16,6 @@ set(Sources
       ${Sources_dir}/src/helper.c
       ${Sources_dir}/src/opencl_utils.c
 )
-
 add_executable(${This} ${Sources})
 
 target_link_libraries(${This} PUBLIC ${IntelFPGAOpenCL_LIBRARIES})
