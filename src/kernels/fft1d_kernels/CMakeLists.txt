@@ -5,14 +5,15 @@ set(This fft1d)
 # OpenCL and related files
 set(CL_FILES 
   ${CMAKE_SOURCE_DIR}/src/kernels/fft1d_kernels/fft1d.cl 
-  ${CMAKE_SOURCE_DIR}/src/kernels/fft_config.h
+  ${CMAKE_SOURCE_DIR}/src/kernels/common/fft_config.h
 )
 
 # Command Output Names
-set(bitstream_emulate ${This}_emulate.aocx)
-set(bitstream_report ${This}_report.aocr)
-set(bitstream_profile ${This}_profile.aocx)
-set(bitstream_syn ${This}.aocx)
+set(bst_name ${FFT_SIZE}pt_${This})
+set(bitstream_emulate ${bst_name}_emulate.aocx)
+set(bitstream_report ${bst_name}_report.aocr)
+set(bitstream_profile ${bst_name}_profile.aocx)
+set(bitstream_syn ${bst_name}.aocx)
 
 # Emulation
 add_custom_command(

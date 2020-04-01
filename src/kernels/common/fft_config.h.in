@@ -23,7 +23,14 @@
 // Values larger than 3 are legal when using an 8 points engine
 // Values smaller than 12 use the precomputed twiddle factors
 
-#define LOGN 6
+#ifndef FFT_CONFIG_H
+#define FFT_CONFIG_H
+
+// Log of the number of points of FFT 
+#define LOGN @LOG_FFT_SIZE@ 
+#define FFT_SIZE @FFT_SIZE@ 
+
+#endif // FFT_CONFIG_H
 
 
 
