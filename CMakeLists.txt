@@ -35,9 +35,10 @@ endif()
 
 find_package(IntelFPGAOpenCL)
 
-
 add_subdirectory(src/host)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(tests)
 endif()
+
+add_subdirectory(src/kernels/fft1d_kernels)
