@@ -19,13 +19,20 @@ typedef struct fpga_timing {
   double pcie_read_t;
   double pcie_write_t;
   double exec_t;
+  int valid;
 } fpga_t;
 
 // Initialize FPGA
-extern int fpga_initialize(const char *platform_name, const char *path);
+extern int fpga_initialize(const char *platform_name, const char *path, int use_svm, int use_emulator);
 
 // Finalize FPGA
 extern void fpga_final();
+
+// Double precision complex memory allocation
+extern void* fftfpga_complex_malloc(size_t sz, int svm);
+
+// Single precision complex memory allocation
+extern void* fftfpgaf_complex_malloc(size_t sz, int svm);
 
 // Double Precision 1d FFT
 extern fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int iter);

@@ -14,23 +14,15 @@
 #include "../include/helper.h"
 
 /**
- * \brief  create random single precision floating point values  
- * \param  inp : pointer to float data of size N 
+ * \brief  create random single precision complex floating point values  
+ * \param  inp : pointer to float2 data of size N 
  * \param  N   : number of points in the array
- * \return status : 
- *            -1 : zero or negative
- *            -2 : greater than 1024
+ * \return 0 if successful 1 if not
  */
 int fftf_create_data(float2 *inp, int N){
 
-  if(inp == NULL){
-    return 0;
-  }
-  else if(N <= 0){
-    return -1;
-  }
-  else if(N > 1024){
-    return -2;
+  if(inp == NULL || N <= 0 || N > 1024){
+    return 1;
   }
 
   for(int i = 0; i < N; i++){
@@ -48,7 +40,37 @@ int fftf_create_data(float2 *inp, int N){
     fclose(fptr); 
 #endif
 
-  return 1;
+  return 0;
+}
+
+/**
+ * \brief  create random double precision complex floating point values  
+ * \param  inp : pointer to double2 data of size N 
+ * \param  N   : number of points in the array
+ * \return 0 if successful 1 if not
+ */
+int fft_create_data(double2 *inp, int N){
+
+  if(inp == NULL || N <= 0 || N > 1024){
+    return 1;
+  }
+
+  for(int i = 0; i < N; i++){
+    inp[i].x = (double)((double)rand() / (double)RAND_MAX);
+    inp[i].y = (double)((double)rand() / (double)RAND_MAX);
+  }
+
+#ifdef DEBUG          
+    FILE *fptr = fopen("input_data.txt", "w"); 
+    for(int i = 0; i < N; i++){
+      if (fptr != NULL){
+        fprintf(fptr, "%d : fft[%d] = (%lf, %lf) \n", i, i, inp[i].x, inp[i].y);
+      }
+    }
+    fclose(fptr); 
+#endif
+
+  return 0;
 }
 
 /**

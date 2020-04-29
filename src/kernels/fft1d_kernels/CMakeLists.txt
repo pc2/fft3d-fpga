@@ -5,7 +5,9 @@ set(This fft1d)
 # OpenCL and related files
 set(CL_FILES 
   ${CMAKE_SOURCE_DIR}/src/kernels/fft1d_kernels/fft1d.cl 
-  ${CMAKE_SOURCE_DIR}/src/kernels/common/fft_config.h
+)
+set(CL_INCLUDES
+ "-I${CMAKE_SOURCE_DIR}/src/kernels/common/fft_config.h"
 )
 
 # Command Output Names
@@ -19,7 +21,7 @@ set(bitstream_syn ${bst_name}.aocx)
 add_custom_command(
   OUTPUT ${bitstream_emulate}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_emulate}
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_emulate}
   MAIN_DEPENDENCY ${CL_FILES}
   COMMENT 
     "Building ${This} for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -34,7 +36,7 @@ add_custom_target(
 add_custom_command(
   OUTPUT ${bitstream_report}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${AOC_FLAGS} ${REP_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_report}
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${CL_INCLUDES} ${AOC_FLAGS} ${REP_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_report}
   MAIN_DEPENDENCY ${CL_FILES}
   COMMENT 
     "Generating report for ${This} in folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -49,7 +51,7 @@ add_custom_target(
 add_custom_command(
   OUTPUT ${bitstream_profile}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${AOC_FLAGS} ${PROF_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_profile}
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${CL_INCLUDES} ${AOC_FLAGS} ${PROF_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_profile}
   MAIN_DEPENDENCY ${CL_FILES}
   COMMENT 
     "Building ${This} for profiling to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -64,7 +66,7 @@ add_custom_target(
 add_custom_command(
   OUTPUT ${bitstream_syn}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${AOC_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_syn}
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${CL_INCLUDES} ${AOC_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_syn}
   MAIN_DEPENDENCY ${CL_FILES}
   COMMENT 
     "Building ${This} for synthesis to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -74,3 +76,6 @@ add_custom_command(
 add_custom_target(
   ${This}_syn DEPENDS ${bitstream_syn}
 )
+
+# TODO
+## Debug compilation flag

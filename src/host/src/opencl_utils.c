@@ -27,6 +27,10 @@ static size_t loadBinary(const char *binary_path, char **buf);
 cl_platform_id findPlatform(const char *platform_name){
   cl_uint status;
 
+  if(platform_name == NULL || strlen(platform_name) == 0){
+    return NULL;
+  }
+
   // Check if there are any platforms available
   cl_uint num_platforms;
   status = clGetPlatformIDs(0, NULL, &num_platforms);
@@ -90,6 +94,11 @@ cl_platform_id findPlatform(const char *platform_name){
 cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint *num_devices) {
   cl_int status;
 
+  if(pid == NULL || device_type == 0){
+    fprintf(stderr, "Bad arguments passed\n");
+    return NULL;
+  }
+
   // Query for number of devices
   status = clGetDeviceIDs(pid, device_type, 0, NULL, num_devices);
   if(status != CL_SUCCESS){
@@ -108,11 +117,16 @@ cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint
   return dev_ids;
 }
 
+/**
+ * \brief  checks if file exists with given filename
+ * \param  filename: string
+ * \retval 0 if successful and 1 otherwise
+ */
 static int fileExists(const char* filename){
   if( access( filename, R_OK ) != -1 ) {
-    return 1;
-  } else {
     return 0;
+  } else {
+    return 1;
   }
 }
 
@@ -128,8 +142,10 @@ cl_program getProgramWithBinary(cl_context context, cl_device_id *devices, cl_ui
   char *binary, *binaries[num_devices];
   cl_int bin_status, status;
 
-  //printf("Path to Binary : %s\n", path);
-  if (!fileExists(path)){
+  if(num_devices == 0)
+    return NULL;
+
+  if (fileExists(path)){
     fprintf(stderr, "File not found in path %s\n", path);
     return NULL;
   }

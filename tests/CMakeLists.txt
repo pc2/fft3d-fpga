@@ -13,6 +13,8 @@ include_directories(
   ${IntelFPGAOpenCL_INCLUDE_DIRS}
 )
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "../extern/findFFTW")
+
 set(Sources_dir ${CMAKE_SOURCE_DIR}/src/host)
 
 set(Sources 
@@ -37,6 +39,14 @@ target_link_libraries(${This} PUBLIC
   gmock
   ${IntelFPGAOpenCL_LIBRARIES}
 )
+
+find_package(FFTW)
+if(FFTW_FOUND)
+  target_compile_definitions(${This} PRIVATE USE_FFTW)
+  target_link_libraries(${This} PUBLIC fftw3 fftw3f)
+else()
+  message(WARNING, "FFTW library not found. Cannot perform correctness tests!")
+endif()
 
 add_test(
   NAME ${This}
