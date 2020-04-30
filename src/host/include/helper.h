@@ -19,6 +19,7 @@ void verify_sp_fft(float2 *fft_data, float2 *fftw_data, int N[3]);
 void verify_dp_fft(double2 *fft_data, double2 *fftw_data, int N[3]);
 */
 
+
 double getTimeinMilliSec();
 
 /*

@@ -1,17 +1,19 @@
-/******************************************************************************
- *  Author: Arjun Ramaswami
- *****************************************************************************/
+// Author: Arjun Ramaswami
 
-// global dependencies
 #define _POSIX_C_SOURCE 199309L  
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-//#define _USE_MATH_DEFINES
+#include <math.h>
+#define _USE_MATH_DEFINES
 
 #include "../include/fftfpga.h"
 #include "../include/helper.h"
+
+#ifdef USE_FFTW
+  #include <fftw3.h>
+#endif
 
 /**
  * \brief  create random single precision complex floating point values  
@@ -140,34 +142,36 @@ void verify_sp_fft(float2 *fft_data, fftwf_complex *fftw_data, int N[3]){
  * \param  fftw_data : pointer to fft3d sized allocation of dp complex data for fftw cpu computation
  * \param  N : 3 element integer array containing the size of FFT3d  
  *****************************************************************************/
+#ifdef USE_FFTW
 /*
-void verify_dp_fft(double2 *fft_data, fftw_complex *fftw_data, int N[3]){
-  unsigned where, i, j, k;
+int verify_dp_fft(double2 *fft_data, fftw_complex *fftw_data, int N){
   double mag_sum = 0, noise_sum = 0, magnitude, noise;
 
-  for (i = 0; i < N[0]; i++) {
-    for (j = 0; j < N[1]; j++) {
-      for ( k = 0; k < N[2]; k++) {
-        where = coord(N, i, j, k);
-        double magnitude = fftw_data[where][0] * fftw_data[where][0] + \
-                          fftw_data[where][1] * fftw_data[where][1];
-        double noise = (fftw_data[where][0] - fft_data[where].x) \
-            * (fftw_data[where][0] - fft_data[where].x) + 
-            (fftw_data[where][1] - fft_data[where].y) * (fftw_data[where][1] - fft_data[where].y);
+  for (size_t i = 0; i < N; i++) {
+    double magnitude = fftw_data[i][0] * fftw_data[i][0] + \
+                      fftw_data[i][1] * fftw_data[i][1];
+    double noise = (fftw_data[i][0] - fft_data[i].x) \
+        * (fftw_data[i][0] - fft_data[i].x) + 
+        (fftw_data[i][1] - fft_data[i].y) * (fftw_data[i][1] - fft_data[i].y);
 
-        mag_sum += magnitude;
-        noise_sum += noise;
+    mag_sum += magnitude;
+    noise_sum += noise;
 #ifdef DEBUG
-        printf("%d : fpga - (%e %e)  cpu - (%e %e)\n", where, fft_data[where].x, fft_data[where].y, fftw_data[where][0], fftw_data[where][1]);
+    printf("%d : fpga - (%e %e)  cpu - (%e %e)\n", i, fft_data[i].x, fft_data[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif
-      }
-    }
   }
 
   double db = 10 * log(mag_sum / noise_sum) / log(10.0);
-  printf("-> Signal to noise ratio on output sample: %lf --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
+  if( db > 120)
+    return 0;
+  else
+    return 1;
+  
+  //printf("-> Signal to noise ratio on output sample: %lf --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 }
 */
+#endif
+
 /******************************************************************************
  * \brief  print time taken for fpga and fftw runs to a file
  * \param  fftw_time, fpga_time: double
