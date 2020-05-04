@@ -74,24 +74,31 @@ int main(int argc, const char **argv) {
         timing = fftfpgaf_c2c_1d(N, inp, out, inv, iter);
       }
       break;
-  /*
     case 2:
       if(sp == 0){
-        double2 *inp = malloc(sizeof(double2) * N * N);
+        printf("Work in progress\n");
+        /*
+        size_t inp_sz = sizeof(double2) * N * N;
+        double2 *inp = (double2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+        double2 *out = (double2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
 
-        fft_create_data(inp, N * N * iter);
+        fft_create_data(inp, N * N);
 
-        fftfpga_c2c_2d(N, inp, inv);
+        timing = fftfpga_c2c_2d(N, inp, out, inv);
+        */
       } 
       else{
-        float2 *inp = malloc(sizeof(float2) * N * N);
 
-        fftf_create_data(inp, N * N * iter);
+        size_t inp_sz = sizeof(float2) * N * N;
+        float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+        float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
 
-        fftfpgaf_c2c_2d(N, inp, inv);
+        fftf_create_data(inp, N * N);
+
+        timing = fftfpgaf_c2c_2d(N, inp, out, inv);
       }
       break;
-
+    /*
     case 3:
       if(sp == 0){
         double2 *inp = malloc(sizeof(double2) * N * N * N);

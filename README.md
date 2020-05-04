@@ -7,4 +7,11 @@ Performance model for the application can be found [here](docs/3dfft_model.md).
 ```
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 cmake -DCMAKE_BUILD_TYPE=Release ..
+
+make
+make fft1d_emulate
+make fft2d_emulate
+make test
 ```
+
+batch mode

@@ -23,7 +23,7 @@
  */
 int fftf_create_data(float2 *inp, int N){
 
-  if(inp == NULL || N <= 0 || N > 1024){
+  if(inp == NULL || N <= 0){
     return 1;
   }
 
