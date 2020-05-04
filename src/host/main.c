@@ -98,24 +98,20 @@ int main(int argc, const char **argv) {
         timing = fftfpgaf_c2c_2d(N, inp, out, inv);
       }
       break;
-    /*
     case 3:
       if(sp == 0){
-        double2 *inp = malloc(sizeof(double2) * N * N * N);
-
-        fft_create_data(inp, N * N * N * iter);
-
-        fftfpga_c2c_3d(N, inp, inv);
+        printf("Work in progress\n");
       } 
       else{
-        float2 *inp = malloc(sizeof(float2) * N * N * N);
+        size_t inp_sz = sizeof(float2) * N * N * N;
+        float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+        float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
 
-        fftf_create_data(inp, N * N * N * iter);
+        fftf_create_data(inp, N * N * N);
 
-        fftfpgaf_c2c_3d(N, inp, inv);
+        timing = fftfpgaf_c2c_3d(N, inp, out, inv);
       }
       break;
-  */
 
     default:
       printf("Enter Dimension\n");

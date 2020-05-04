@@ -2,43 +2,21 @@
  *  Author: Arjun Ramaswami
  *****************************************************************************/
 
-#ifndef LOGN
-#define LOGN 6
-#endif
-
-#ifdef DEBUG
-#define STRINGIFY_VALUE(x) #x    
-#define STRINGIFY_NAME_VALUE(var) #var "=" STRINGIFY_VALUE(var)   // '#' returns the argument as a string (stringifies the variable)
-#pragma message(STRINGIFY_NAME_VALUE(LOGN))                       // requires string as message
-#endif
-
-#ifdef __FPGA_SP
-  #ifdef DEBUG
-    #pragma message "Single Precision Activated"
-  #endif
-
-  typedef float2 cmplex;
-#else
-  #ifdef DEBUG
-    #pragma message "Double Precision Activated"
-  #endif
-
-  typedef double2 cmplex;
-  #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-#endif
-
 #include "fft_8.cl" 
 
 // Macros for the 8 point 1d FFT
 #define LOGPOINTS 3
 #define POINTS (1 << LOGPOINTS)
 
+// Source the log(size) (log(1k) = 10) from a header shared with the host code
+#include "../common/fft_config.h"
+
 #pragma OPENCL EXTENSION cl_intel_channels : enable
-channel cmplex chaninfft[8] __attribute__((depth(8)));
-channel cmplex chanoutfft[8] __attribute__((depth(8)));
-channel cmplex chaninfft2[8] __attribute__((depth(8)));
-channel cmplex chanoutfft2[8] __attribute__((depth(8)));
-channel cmplex chaninfetch[8] __attribute__((depth(8)));
+channel float2 chaninfft[8] __attribute__((depth(8)));
+channel float2 chanoutfft[8] __attribute__((depth(8)));
+channel float2 chaninfft2[8] __attribute__((depth(8)));
+channel float2 chanoutfft2[8] __attribute__((depth(8)));
+channel float2 chaninfetch[8] __attribute__((depth(8)));
 
 
 // --- CODE -------------------------------------------------------------------
@@ -53,7 +31,7 @@ int bit_reversed(int x, int bits) {
   return y;
 }
 
-void sendTofft(cmplex *buffer, const unsigned N, unsigned j){
+void sendTofft(float2 *buffer, const unsigned N, unsigned j){
   write_channel_intel(chaninfft[0], buffer[j]);               // 0
   write_channel_intel(chaninfft[1], buffer[4 * N / 8 + j]);   // 32
   write_channel_intel(chaninfft[2], buffer[2 * N / 8 + j]);   // 16
@@ -65,12 +43,12 @@ void sendTofft(cmplex *buffer, const unsigned N, unsigned j){
 }
 
 // Kernel that fetches data from global memory 
-kernel void fetch(global volatile cmplex * restrict src) {
+kernel void fetch(global volatile float2 * restrict src) {
   const unsigned N = (1 << LOGN);
 
   for(unsigned k = 0; k < (1 << (LOGN + LOGN)); k++){ 
 
-    cmplex buf[N];
+    float2 buf[N];
     #pragma unroll 8
     for(unsigned i = 0; i < N; i++){
       buf[i & ((1<<LOGN)-1)] = src[(k << LOGN) + i];    
@@ -83,7 +61,7 @@ kernel void fetch(global volatile cmplex * restrict src) {
 
   for(unsigned k = 0; k < (1 << (LOGN+LOGN)); k++){ 
 
-    cmplex buf[N];
+    float2 buf[N];
     for(unsigned i = 0; i < (N / 8); i++){
 
         #pragma unroll 8
@@ -111,13 +89,12 @@ kernel void fft3da(int inverse) {
    * array are simple transfers between adjacent array elements
    */
 
-  cmplex fft_delay_elements[N + POINTS * (LOGN - 2)];
-
-  #pragma loop_coalesce
+  float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
   for( int j = 0; j < N * 2; j++){
+
       // needs to run "N / 8 - 1" additional iterations to drain the last outputs
       for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
-        cmplex8 data;
+        float2x8 data;
 
         // Read data from channels
         if (i < N * (N / POINTS)) {
@@ -154,18 +131,16 @@ kernel void fft3da(int inverse) {
 }
 
 // Transposes fetched data; stores them to global memory
-kernel void transpose(global cmplex * restrict dest) {
+kernel void transpose(global float2 * restrict dest) {
 
   const unsigned N = (1 << LOGN);
   unsigned revcolt, where_read, where_write, where;
 
-  //local cmplex buf[N * N];
+  local float2 buf[N * N];
 
   // Perform N times N*N transpositions and transfers
   for(unsigned p = 0; p < N; p++){
-    cmplex buf[N * N];
 
-    #pragma loop_coalesce
     for(unsigned i = 0; i < N; i++){
       for(unsigned k = 0; k < (N / 8); k++){
         where_read = ((i << LOGN) + (k << LOGPOINTS));
@@ -177,11 +152,10 @@ kernel void transpose(global cmplex * restrict dest) {
       }
     }
 
-
-    #pragma loop_coalesce
     for(unsigned i = 0; i < N; i++){
+      revcolt = bit_reversed(i, LOGN);
+
       for(unsigned k = 0; k < (N / 8); k++){
-        revcolt = bit_reversed(i, LOGN);
         where_write = ((k * N) + revcolt);
 
         write_channel_intel(chaninfft2[0], buf[where_write]);               // 0
@@ -197,9 +171,7 @@ kernel void transpose(global cmplex * restrict dest) {
   }
 
   for(unsigned p = 0; p < N; p++){
-    cmplex buf[N * N];
 
-    #pragma loop_coalesce
     for(unsigned i = 0; i < N; i++){
       for(unsigned j = 0; j < (N / 8); j++){
         where = ((i << LOGN) + (j << LOGPOINTS));
@@ -234,12 +206,11 @@ kernel void fft3db(int inverse) {
    * array are simple transfers between adjacent array elements
    */
 
-  cmplex fft_delay_elements[N + POINTS * (LOGN - 2)];
-
-  #pragma loop_coalesce
+  float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
   for( int j = 0; j < N; j++){
+
       for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
-        cmplex8 data;
+        float2x8 data;
 
         // Read data from channels
         if (i < N * (N / POINTS)) {
@@ -281,13 +252,12 @@ kernel void transpose3d(){
   unsigned revcolt, where;
   unsigned where_test;
 
-  local cmplex buf_3d[N * N * N];
+  local float2 buf_3d[N * N * N];
+  local float2 buf[N * N];
 
   // perform N*N*N writes to buffer
   for(unsigned m = 0; m < N; m++){
 
-    cmplex buf[N * N];
-    #pragma loop_coalesce
     for(unsigned i = 0; i < N; i++){
       for(unsigned j = 0; j < (N / 8); j++){
         where = ((i << LOGN) + (j << LOGPOINTS));
@@ -314,7 +284,6 @@ kernel void transpose3d(){
   // Flush entire 3d buffer transposed through channels
   for(unsigned m = 0; m < N; m++){
 
-    cmplex buf[N * N];
     for(unsigned i = 0; i < N; i++){
       where = ((i << (LOGN + LOGN)) + ( m << LOGN));
 
@@ -324,7 +293,6 @@ kernel void transpose3d(){
       }
     }
 
-    #pragma loop_coalesce
     for( unsigned i = 0; i < N; i++){
       for( unsigned j = 0; j < (N / 8); j++){
         where = (j * N * 8) + i;

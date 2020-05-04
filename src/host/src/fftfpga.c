@@ -359,6 +359,10 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter){
   //printf("PCIe Read Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_read_t * 1E3, N*iter, sizeof(float2) * N * iter);
 
   // Cleanup
+  if (d_inData)
+  	clReleaseMemObject(d_inData);
+  if (d_outData) 
+	  clReleaseMemObject(d_outData);
   if(kernel1)
     clReleaseKernel(kernel1);
   if(kernel2)
@@ -487,6 +491,12 @@ fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, float2 *out, int inv){
   */
 
   // Cleanup
+  if (d_inData)
+  	clReleaseMemObject(d_inData);
+  if (d_outData) 
+	  clReleaseMemObject(d_outData);
+  if (d_tmp)
+	  clReleaseMemObject(d_tmp);
   if(fft_kernel)
     clReleaseKernel(fft_kernel);
   if(fetch_kernel)
@@ -498,6 +508,127 @@ fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, float2 *out, int inv){
   fft_time.valid = 1;
   return fft_time;
 }
+
+fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, float2 *out, int inv) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+  cl_kernel fft_kernel = NULL, fft_kernel_2 = NULL;
+  cl_kernel fetch_kernel = NULL, transpose_kernel = NULL, transpose_kernel_2 = NULL;
+  int mangle_int = 0;
+  cl_int status = 0;
+
+  // if N is not a power of 2
+  if(inp == NULL || out == NULL || (N & (N-1) !=0)){
+    return fft_time;
+  }
+
+#ifdef VERBOSE
+  printf("Launching%s 3d FFT transform \n", inv ? " inverse":"");
+#endif
+
+  queue_setup();
+
+  // Device memory buffers
+  cl_mem d_inData, d_outData;
+  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * N * N, NULL, &status);
+  checkError(status, "Failed to allocate input device buffer\n");
+  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * N * N, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+ // Copy data from host to device
+  fft_time.pcie_write_t = getTimeinMilliSec();
+
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * N * N, inp, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish");
+
+  fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
+  checkError(status, "Failed to copy data to device");
+
+  // Can't pass bool to device, so convert it to int
+  int inverse_int = inv;
+
+  // Create the kernel - name passed in here must match kernel name in the
+  // original CL file, that was compiled into an AOCX file using the AOC tool
+  fft_kernel = clCreateKernel(program, "fft3da", &status);
+  checkError(status, "Failed to create fft3da kernel");
+  fft_kernel_2 = clCreateKernel(program, "fft3db", &status);
+  checkError(status, "Failed to create fft3db kernel");
+  fetch_kernel = clCreateKernel(program, "fetch", &status);
+  checkError(status, "Failed to create fetch kernel");
+  transpose_kernel = clCreateKernel(program, "transpose", &status);
+  checkError(status, "Failed to create transpose kernel");
+  transpose_kernel_2 = clCreateKernel(program, "transpose3d", &status);
+  checkError(status, "Failed to create transpose3d kernel");
+
+  status = clSetKernelArg(fetch_kernel, 0, sizeof(cl_mem), (void *)&d_inData);
+  checkError(status, "Failed to set kernel arg 0");
+  status = clSetKernelArg(fft_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set kernel arg 1");
+  status = clSetKernelArg(transpose_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+  checkError(status, "Failed to set kernel arg 2");
+  status = clSetKernelArg(fft_kernel_2, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set kernel arg 3");
+
+  fft_time.exec_t = getTimeinMilliSec();
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
+
+  // Launch the fft kernel - we launch a single work item hence enqueue a task
+  status = clEnqueueTask(queue2, fft_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fft kernel");
+
+  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch transpose kernel");
+
+  status = clEnqueueTask(queue4, fft_kernel_2, 0, NULL, NULL);
+  checkError(status, "Failed to launch second fft kernel");
+
+  status = clEnqueueTask(queue5, transpose_kernel_2, 0, NULL, NULL);
+  checkError(status, "Failed to launch second transpose kernel");
+
+  // Wait for all command queues to complete pending events
+  status = clFinish(queue1);
+  checkError(status, "failed to finish");
+  status = clFinish(queue2);
+  checkError(status, "failed to finish");
+  status = clFinish(queue3);
+  checkError(status, "failed to finish");
+  status = clFinish(queue4);
+  checkError(status, "failed to finish");
+  status = clFinish(queue5);
+  checkError(status, "failed to finish");
+
+  fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
+
+  // Copy results from device to host
+  fft_time.pcie_read_t = getTimeinMilliSec();
+  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N * N, out, 0, NULL, NULL);
+  fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
+  checkError(status, "Failed to copy data from device");
+
+  queue_cleanup();
+
+  if (d_inData)
+  	clReleaseMemObject(d_inData);
+  if (d_outData) 
+	  clReleaseMemObject(d_outData);
+
+  if(fetch_kernel) 
+    clReleaseKernel(fetch_kernel);  
+  if(fft_kernel) 
+    clReleaseKernel(fft_kernel);  
+  if(fft_kernel_2) 
+    clReleaseKernel(fft_kernel_2);  
+  if(transpose_kernel) 
+    clReleaseKernel(transpose_kernel);  
+  if(transpose_kernel_2) 
+    clReleaseKernel(transpose_kernel_2); 
+
+  fft_time.valid = 1;
+  return fft_time;
+}
+
 
 /**
  * \brief Create a command queue for each kernel

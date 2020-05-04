@@ -43,4 +43,7 @@ extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter
 // Single Precision 2d FFT
 extern fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, float2 *out, int inv);
 
+// Single Precision 3d FFT
+extern fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, float2 *out, int inv);
+
 #endif

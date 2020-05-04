@@ -209,3 +209,74 @@ TEST_F(fftFPGATest, ValidSp2dFFT){
   free(out);
   fpga_final();
 }
+
+/**
+ * \brief fftfpgaf_c2c_3d()
+ */
+TEST_F(fftFPGATest, ValidSp3dFFT){
+  int logN = 6;
+  int N = (1 << 6);
+
+  size_t sz = sizeof(float2) * N * N * N;
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
+  float2 *out = (float2*)fftfpgaf_complex_malloc(sz, 0);
+  // null inp ptr input
+  fpga_t fft_time = fftfpgaf_c2c_3d(64, NULL, out, 0);
+  EXPECT_EQ(fft_time.valid, 0);
+
+  // null out ptr input
+  fft_time = fftfpgaf_c2c_3d(64, inp, NULL, 0);
+  EXPECT_EQ(fft_time.valid, 0);
+
+  // if N not a power of 2
+  fft_time = fftfpgaf_c2c_3d(63, inp, out, 0);
+  EXPECT_EQ(fft_time.valid, 0);
+
+  // check correctness of output
+#ifdef USE_FFTW
+  // malloc data to input
+  fftf_create_data(inp, N * N * N);
+
+  int test = fpga_initialize("Intel(R) FPGA", "64pt_fft3d_emulate.aocx", 0, 1);
+  ASSERT_NE(test, 1);
+
+  fft_time = fftfpgaf_c2c_3d(64, inp, out, 0);
+
+  fftwf_complex* fftw_inp = (fftwf_complex*)fftwf_alloc_complex(sz);
+  fftwf_complex* fftw_out = (fftwf_complex*)fftwf_alloc_complex(sz);
+
+  fftwf_plan plan = fftwf_plan_dft_3d(N, N, N, &fftw_inp[0], &fftw_out[0], FFTW_FORWARD, FFTW_ESTIMATE);
+
+  for(size_t i = 0; i < N * N * N; i++){
+    fftw_inp[i][0] = inp[i].x;
+    fftw_inp[i][1] = inp[i].y;
+  }
+
+  fftwf_execute(plan);
+
+  double mag_sum = 0, noise_sum = 0, magnitude, noise;
+
+  for (size_t i = 0; i < N * N * N; i++) {
+    double magnitude = fftw_out[i][0] * fftw_out[i][0] + \
+                      fftw_out[i][1] * fftw_out[i][1];
+    double noise = (fftw_out[i][0] - out[i].x) \
+        * (fftw_out[i][0] - out[i].x) + 
+        (fftw_out[i][1] - out[i].y) * (fftw_out[i][1] - out[i].y);
+
+    mag_sum += magnitude;
+    noise_sum += noise;
+  }
+  double db = 10 * log(mag_sum / noise_sum) / log(10.0);
+  ASSERT_GT(db, 120);
+  EXPECT_GT(fft_time.exec_t, 0.0);
+  EXPECT_EQ(fft_time.valid, 1);
+
+  fftwf_free(fftw_inp);
+  fftwf_free(fftw_out);
+  fftwf_destroy_plan(plan);
+#endif
+
+  free(inp);
+  free(out);
+  fpga_final();
+}
