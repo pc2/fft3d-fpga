@@ -1,6 +1,4 @@
-/******************************************************************************
- *  Author: Arjun Ramaswami
- *****************************************************************************/
+//  Author: Arjun Ramaswami
 
 #include "fft_8.cl" 
 
@@ -19,7 +17,6 @@ channel float2 chanoutfft2[8] __attribute__((depth(8)));
 channel float2 chaninfetch[8] __attribute__((depth(8)));
 
 
-// --- CODE -------------------------------------------------------------------
 int bit_reversed(int x, int bits) {
   int y = 0;
   #pragma unroll 

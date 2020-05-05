@@ -1,6 +1,4 @@
-/******************************************************************************
- *  Author: Arjun Ramaswami
- *****************************************************************************/
+// Author: Arjun Ramaswami
 
 #include <stdio.h>  
 #include <stdlib.h> // size_t, EXIT_FAILURE, NULL, EXIT_SUCCESS

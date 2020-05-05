@@ -1,7 +1,8 @@
+docs/
+data/
 bin/
 build/
 debug/
-extern/
 fpgabitstream/
 scripts/
 reports/

@@ -1,9 +1,8 @@
-/******************************************************************************
- *  Author: Arjun Ramaswami
- *****************************************************************************/
+//  Author: Arjun Ramaswami
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "CL/opencl.h"
 
@@ -17,6 +16,7 @@ static const char *const usage[] = {
 };
 
 static void print_config(int N, int dim, int iter, int inv, int sp);
+static void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp);
 
 int main(int argc, const char **argv) {
   int N = 64, dim = 1, iter = 1, inv = 0, sp = 0;
@@ -34,7 +34,7 @@ int main(int argc, const char **argv) {
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
-    OPT_STRING('p', "path", &path, "path to bitstream"),
+    OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_END(),
   };
 
@@ -54,14 +54,8 @@ int main(int argc, const char **argv) {
   switch(dim){
     case 1:
       if(sp == 0){
-        size_t inp_sz = sizeof(double2) * N * iter;
-
-        double2 *inp = (double2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-        double2 *out = (double2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-
-        fft_create_data(inp, N * iter);
-
-        timing = fftfpga_c2c_1d(N, inp, out, inv, iter);
+        printf("Work in progress\n");
+        return 0;
       } 
       else{
         size_t inp_sz = sizeof(float2) * N * iter;
@@ -72,20 +66,15 @@ int main(int argc, const char **argv) {
         fftf_create_data(inp, N * iter);
 
         timing = fftfpgaf_c2c_1d(N, inp, out, inv, iter);
+
+        free(inp);
+        free(out);
       }
       break;
     case 2:
       if(sp == 0){
         printf("Work in progress\n");
-        /*
-        size_t inp_sz = sizeof(double2) * N * N;
-        double2 *inp = (double2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-        double2 *out = (double2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-
-        fft_create_data(inp, N * N);
-
-        timing = fftfpga_c2c_2d(N, inp, out, inv);
-        */
+        return 0;
       } 
       else{
 
@@ -96,11 +85,14 @@ int main(int argc, const char **argv) {
         fftf_create_data(inp, N * N);
 
         timing = fftfpgaf_c2c_2d(N, inp, out, inv);
+        free(inp);
+        free(out);
       }
       break;
     case 3:
       if(sp == 0){
         printf("Work in progress\n");
+        return 0;
       } 
       else{
         size_t inp_sz = sizeof(float2) * N * N * N;
@@ -110,105 +102,22 @@ int main(int argc, const char **argv) {
         fftf_create_data(inp, N * N * N);
 
         timing = fftfpgaf_c2c_3d(N, inp, out, inv);
+        free(inp);
+        free(out);
       }
       break;
 
     default:
-      printf("Enter Dimension\n");
-      break;
+      printf("No Dimension entered\n");
+      return 0;
   }
 
   // destroy data
   fpga_final();
 
-  /*
-  // Allocate mem for input buffer and fftw buffer
-  fft_data = (cmplx *)malloc(sizeof(cmplx) * N[0] * N[1] * N[2]);
-#ifdef __FPGA_SP
-  printf("Obtaining Single Precision Data\n");
-  int num_bytes = snprintf(inp_fname, inp_filename_len, "../inputfiles/input_f%d_%d_%d.inp", N[0], N[1], N[2]);
-  if(num_bytes > inp_filename_len){
-    printf("Insufficient buffer size to store path to inputfile\n");
-    exit(1);
+  if(timing.valid == 1){
+    display_measures(timing, N, dim, iter, inv, sp);
   }
-  fftw_sp_data = (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * N[0] * N[1] * N[2]);
-  get_sp_input_data(fft_data, fftw_sp_data, N, inp_fname);
-#else
-  printf("Obtaining Double Precision Data\n");
-  int num_bytes = snprintf(inp_fname, inp_filename_len, "../inputfiles/input_d%d_%d_%d.inp", N[0], N[1], N[2]);
-  if(num_bytes > inp_filename_len){
-    printf("Insufficient buffer size to store path to inputfile\n");
-    exit(1);
-  }
-  fftw_dp_data = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N[0] * N[1] * N[2]);
-  get_dp_input_data(fft_data, fftw_dp_data, N, inp_fname);
-#endif
-
-  // execute FFT3d iter number of times
-  for( i = 0; i < iter; i++){
-    printf("Computing %sFFT3d - %d time\n", inverse ? "inverse ":"", i+1);
-
-    // initialize FPGA
-    if (fpga_initialize_()){
-      printf("Error initializing FPGA. Exiting\n");
-      if(fft_data)
-        free(fft_data);
-      #ifdef __FPGA_SP
-        fftwf_free(fftw_sp_data);
-      #else
-        fftw_free(fftw_dp_data);
-      #endif 
-      exit(1);
-    }
-
-    // check if required bitstream exists
-    if(!fpga_check_bitstream_(bitstream_path, N)){
-      printf("Bitstream not found. Exiting\n");
-      if(fft_data)
-        free(fft_data);
-      #ifdef __FPGA_SP
-        fftwf_free(fftw_sp_data);
-      #else
-        fftw_free(fftw_dp_data);
-      #endif 
-      exit(1);
-    }
-
-    // execute fpga fft3d
-    double start = getTimeinMilliSec();
-#ifdef __FPGA_SP
-    fpga_computetime += fpga_fft3d_sp_(!inverse, N, fft_data);
-#else
-    fpga_computetime += fpga_fft3d_dp_(!inverse, N, fft_data);
-#endif
-    double stop = getTimeinMilliSec();
-    fpga_runtime += stop - start;
-
-    printf("\nComputing FFTW\n");
-#ifdef __FPGA_SP
-    fftw_runtime = compute_sp_fftw(fftw_sp_data, N, inverse);
-    printf("\nChecking Correctness\n");
-    verify_sp_fft(fft_data, fftw_sp_data, N);
-#else
-    fftw_runtime = compute_dp_fftw(fftw_dp_data, N, inverse);
-    printf("\nChecking Correctness\n");
-    verify_dp_fft(fft_data, fftw_dp_data, N);
-#endif
-  }
-
-  // Print performance metrics
-  compute_metrics( fpga_runtime, fpga_computetime, fftw_runtime, iter, N);
-
-  // Free the resources allocated
-  printf("\nCleaning up\n\n");
-  if(fft_data)
-    free(fft_data);
-  #ifdef __FPGA_SP
-    fftwf_free(fftw_sp_data);
-  #else
-    fftw_free(fftw_dp_data);
-  #endif 
-  */
 
   return 0;
 }
@@ -224,4 +133,45 @@ void print_config(int N, int dim, int iter, int inv, int sp){
   printf("Placement          = In Place    \n");
   printf("Iterations         = %d \n", iter);
   printf("--------------------------------------------\n\n");
+}
+
+/**
+ * \brief  print time taken for fpga and fftw runs to a file
+ * \param  timing: kernel execution and pcie transfer timing 
+ * \param  N: fft size
+ * \param  dim: number of dimensions of size
+ * \param  iter: number of iterations of each transformation (if BATCH mode)
+ * \param  inv: 1 if backward transform
+ * \param  single precision floating point transformation
+ */
+void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp){
+
+  if(timing.exec_t == 0.0){
+    fprintf(stderr, "Measurement invalid\n");
+    return;
+  }
+
+  double exec = timing.exec_t / iter;
+  double gpoints_per_sec = (pow(N, dim)  / (exec * 1e-3)) * 1e-9;
+  double gBytes_per_sec = 0.0;
+
+  if(sp == 1){
+    gBytes_per_sec =  gpoints_per_sec * 8; // bytes
+  }
+  else{
+    gBytes_per_sec *=  gpoints_per_sec * 16;
+  }
+
+  double gflops = dim * 5 * pow(N, dim) * (log((double)N)/log((double)2))/(exec * 1e-3 * 1E9); 
+
+  printf("\n------------------------------------------\n");
+  printf("Measurements \n");
+  printf("--------------------------------------------\n");
+  printf("Points             = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
+  printf("Precision          = %s\n",  sp==1 ? "Single": "Double");
+  printf("Direction          = %s\n", inv ? "Backward":"Forward");
+  printf("PCIe Write         = %.2lfms\n", timing.pcie_write_t);
+  printf("Kernel Execution   = %.2lfms\n", exec);
+  printf("PCIe Write         = %.2lfms\n", timing.pcie_read_t);
+  printf("Throughput         = %.2lfGFLOPS/s | %.2lf GB/s\n", gflops, gBytes_per_sec);
 }

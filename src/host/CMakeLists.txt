@@ -19,4 +19,4 @@ set(Sources
 add_compile_definitions(VERBOSE=1)
 add_executable(${This} ${Sources})
 
-target_link_libraries(${This} PUBLIC ${IntelFPGAOpenCL_LIBRARIES})
+target_link_libraries(${This} PUBLIC m ${IntelFPGAOpenCL_LIBRARIES})

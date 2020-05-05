@@ -1,0 +1,33 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+stages:
+  - build
+  - test
+
+build-all:
+  stage: build
+  script:
+    - rm -rf debug
+    - mkdir -p debug && cd debug
+    - cmake ..
+    - make
+    - make fft1d_emulate
+    - make fft2d_emulate
+    - make fft3d_emulate
+    - chmod +x bin/test_fft_fpga bin/fft_fpga
+  artifacts:
+    paths:
+      - debug/bin/64pt_fft1d_emulate.aocx
+      - debug/bin/64pt_fft2d_emulate.aocx
+      - debug/bin/64pt_fft3d_emulate.aocx
+      - debug/bin/test_fft_fpga
+      - debug/bin/fft_fpga
+
+test-all:
+  stage: test
+  script:
+    - cd debug/bin/
+    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test_fft_fpga
+  dependencies:
+    - build-all

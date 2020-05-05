@@ -22,8 +22,8 @@ static cl_program program = NULL;
 static cl_command_queue queue1 = NULL, queue2 = NULL, queue3 = NULL;
 static cl_command_queue queue4 = NULL, queue5 = NULL, queue6 = NULL;
 
-static int svm_handle;
-static int svm_enabled = 0;
+//static int svm_handle;
+//static int svm_enabled = 0;
 #endif
 
 static void queue_setup();
@@ -84,7 +84,7 @@ int fpga_initialize(const char *platform_name, const char *path, int use_svm, in
   printf("\tInitializing FPGA ...\n");
 #endif
 
-  if(path == NULL){
+  if(path == NULL || strlen(path) == 0){
     fprintf(stderr, "Path to binary missing\n");
     return 1;
   }
@@ -162,7 +162,7 @@ fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int iter){
   cl_int status = 0;
 
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || (N & (N-1) !=0)){
+  if(inp == NULL || out == NULL || ((N & (N-1)) !=0)){
     return fft_time;
   }
 
@@ -243,11 +243,11 @@ fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int iter){
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
-  //printf("PCIe Write Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_write_t * 1E3, N*iter, sizeof(float2) * N * iter);
-
-  //printf("PCIe Read Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_read_t * 1E3, N*iter, sizeof(float2) * N * iter);
-
   // Cleanup
+  if (d_inData)
+  	clReleaseMemObject(d_inData);
+  if (d_outData) 
+	  clReleaseMemObject(d_outData);
   if(kernel1)
     clReleaseKernel(kernel1);
   if(kernel2)
@@ -273,7 +273,7 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter){
   cl_int status = 0;
 
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || (N & (N-1) !=0)){
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
     return fft_time;
   }
 
@@ -354,10 +354,6 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter){
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
-  //printf("PCIe Write Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_write_t * 1E3, N*iter, sizeof(float2) * N * iter);
-
-  //printf("PCIe Read Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_read_t * 1E3, N*iter, sizeof(float2) * N * iter);
-
   // Cleanup
   if (d_inData)
   	clReleaseMemObject(d_inData);
@@ -389,7 +385,7 @@ fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, float2 *out, int inv){
   int mangle_int = 0;
 
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || (N & (N-1) !=0)){
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
     return fft_time;
   }
 
@@ -479,17 +475,6 @@ fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, float2 *out, int inv){
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
-  //printf("PCIe Write Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_write_t * 1E3, N*iter, sizeof(float2) * N * iter);
-
-  //printf("PCIe Read Transfer Time of %lfms for %d points of %lu bytes\n", fft_time.pcie_read_t * 1E3, N*iter, sizeof(float2) * N * iter);
-
-  /*
-  printf("final test\n");
-  for(size_t i = 0; i < (N * N); i++){
-    printf("%d: %f %f\n", out[i].x, out[i].y);
-  }
-  */
-
   // Cleanup
   if (d_inData)
   	clReleaseMemObject(d_inData);
@@ -513,11 +498,10 @@ fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, float2 *out, int inv) {
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel fft_kernel = NULL, fft_kernel_2 = NULL;
   cl_kernel fetch_kernel = NULL, transpose_kernel = NULL, transpose_kernel_2 = NULL;
-  int mangle_int = 0;
   cl_int status = 0;
 
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || (N & (N-1) !=0)){
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
     return fft_time;
   }
 

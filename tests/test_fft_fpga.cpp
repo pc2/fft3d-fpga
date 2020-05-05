@@ -17,7 +17,9 @@ extern "C" {
 class fftFPGATest : public :: testing :: Test {
 
   void SetUp(){}
-  void TearDown(){}
+  void TearDown(){
+    //fpga_final();
+  }
 
   protected:
 };
@@ -34,6 +36,7 @@ TEST_F(fftFPGATest, ValidInit){
   EXPECT_EQ(fpga_initialize("TEST", "fft1d_emulate.aocx", 0, 1), 1);
   // right path and platform names
   EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "64pt_fft1d_emulate.aocx", 0, 1), 0);
+  fpga_final();
 }
 
 /**
@@ -106,16 +109,16 @@ TEST_F(fftFPGATest, ValidSp1dFFT){
     out[i] = temp[bit_rev];
   }
 
-  for(size_t i = 0; i < N; i++){
+  for(int i = 0; i < N; i++){
     fftw_inp[i][0] = inp[i].x;
     fftw_inp[i][1] = inp[i].y;
   }
 
   fftwf_execute(plan);
 
-  double mag_sum = 0, noise_sum = 0, magnitude, noise;
+  double mag_sum = 0, noise_sum = 0;
 
-  for (size_t i = 0; i < N; i++) {
+  for (int i = 0; i < N; i++) {
     double magnitude = fftw_out[i][0] * fftw_out[i][0] + \
                       fftw_out[i][1] * fftw_out[i][1];
     double noise = (fftw_out[i][0] - out[i].x) \
@@ -133,17 +136,18 @@ TEST_F(fftFPGATest, ValidSp1dFFT){
   fftwf_free(fftw_inp);
   fftwf_free(fftw_out);
   fftwf_destroy_plan(plan);
+  free(temp);
+  fpga_final();
 #endif
 
   free(inp);
   free(out);
-  fpga_final();
 }
+
 /**
  * \brief fftfpgaf_c2c_2d()
  */
 TEST_F(fftFPGATest, ValidSp2dFFT){
-  int logN = 6;
   int N = (1 << 6);
 
   size_t sz = sizeof(float2) * N * N;
@@ -183,7 +187,7 @@ TEST_F(fftFPGATest, ValidSp2dFFT){
 
   fftwf_execute(plan);
 
-  double mag_sum = 0, noise_sum = 0, magnitude, noise;
+  double mag_sum = 0, noise_sum = 0;
 
   for (size_t i = 0; i < N * N; i++) {
     double magnitude = fftw_out[i][0] * fftw_out[i][0] + \
@@ -203,18 +207,16 @@ TEST_F(fftFPGATest, ValidSp2dFFT){
   fftwf_free(fftw_inp);
   fftwf_free(fftw_out);
   fftwf_destroy_plan(plan);
+  fpga_final();
 #endif
 
   free(inp);
   free(out);
-  fpga_final();
 }
-
 /**
  * \brief fftfpgaf_c2c_3d()
  */
 TEST_F(fftFPGATest, ValidSp3dFFT){
-  int logN = 6;
   int N = (1 << 6);
 
   size_t sz = sizeof(float2) * N * N * N;
@@ -247,16 +249,16 @@ TEST_F(fftFPGATest, ValidSp3dFFT){
 
   fftwf_plan plan = fftwf_plan_dft_3d(N, N, N, &fftw_inp[0], &fftw_out[0], FFTW_FORWARD, FFTW_ESTIMATE);
 
-  for(size_t i = 0; i < N * N * N; i++){
+  for(int i = 0; i < (N * N * N); i++){
     fftw_inp[i][0] = inp[i].x;
     fftw_inp[i][1] = inp[i].y;
   }
 
   fftwf_execute(plan);
 
-  double mag_sum = 0, noise_sum = 0, magnitude, noise;
+  double mag_sum = 0, noise_sum = 0;
 
-  for (size_t i = 0; i < N * N * N; i++) {
+  for (int i = 0; i < (N * N * N); i++) {
     double magnitude = fftw_out[i][0] * fftw_out[i][0] + \
                       fftw_out[i][1] * fftw_out[i][1];
     double noise = (fftw_out[i][0] - out[i].x) \
@@ -274,9 +276,9 @@ TEST_F(fftFPGATest, ValidSp3dFFT){
   fftwf_free(fftw_inp);
   fftwf_free(fftw_out);
   fftwf_destroy_plan(plan);
+  fpga_final();
 #endif
 
   free(inp);
   free(out);
-  fpga_final();
 }
