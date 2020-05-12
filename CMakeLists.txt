@@ -33,7 +33,7 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     endif()
 endif()
 
-find_package(IntelFPGAOpenCL)
+find_package(IntelFPGAOpenCL REQUIRED)
 
 add_subdirectory(src/host)
 
