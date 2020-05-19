@@ -22,7 +22,7 @@ This can be modelled as (incomplete):
 |     64^3    |     0.253     |             0.44            |            0.43            |
 |    128^3    |      2.03     |             2.75            |            2.75            |
 |    256^3    |     16.24     |             21.3            |            21.3            |
-|    512^3    |     129.9     |                             |                            |
+|    512^3    |     129.9     |                             |                            |                |
 
 SP = complex single precision floating point
 
