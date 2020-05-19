@@ -13,3 +13,5 @@ slurm*
 *.swp
 *.vscode
 *.log
+
+fft_config.h
