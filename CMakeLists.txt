@@ -55,7 +55,7 @@ configure_file(
 ## TODO: enumerate options to choose from
 set(BOARD_NAME $ENV{FPGA_BOARD_NAME})
 if(BOARD_NAME)
-  set(FPGA_BOARD_NAME BOARD_NAME CACHE STRING "Target Board")
+  set(FPGA_BOARD_NAME ${BOARD_NAME} CACHE STRING "Target Board")
 else()
   set(FPGA_BOARD_NAME p520_hpc_sg280l CACHE STRING "Target Board")
 endif()
