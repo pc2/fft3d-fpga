@@ -18,6 +18,6 @@ set(Sources
 )
 add_executable(${This} ${Sources})
 
-#target_link_libraries(${This} PUBLIC m ${IntelFPGAOpenCL_LIBRARIES})
-target_link_libraries(${This} PUBLIC m OpenCL)
+target_link_libraries(${This} PUBLIC m ${IntelFPGAOpenCL_LIBRARIES})
+#target_link_libraries(${This} PUBLIC m OpenCL)
 message("OPenCL Libraries: ${IntelFPGAOpenCL_LIBRARIES}")
