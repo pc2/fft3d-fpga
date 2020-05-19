@@ -1,6 +1,6 @@
 # Author: Arjun Ramaswami
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 set(This fft2d)
 

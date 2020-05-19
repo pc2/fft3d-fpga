@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 set(This fft_fpga)
 
@@ -16,7 +16,6 @@ set(Sources
       ${Sources_dir}/src/helper.c
       ${Sources_dir}/src/opencl_utils.c
 )
-add_compile_definitions(VERBOSE=1)
 add_executable(${This} ${Sources})
 
 target_link_libraries(${This} PUBLIC m ${IntelFPGAOpenCL_LIBRARIES})

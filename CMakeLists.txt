@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 project(fft-fpga VERSION 0.1
             DESCRIPTION "Library for FFT using FPGAs"
@@ -44,7 +44,7 @@ endif()
 # FPGA
 
 set(LOG_FFT_SIZE 6 CACHE STRING "Log of points of FFT")
-math(EXPR FFT_SIZE "1 << ${LOG_FFT_SIZE}" OUTPUT_FORMAT DECIMAL)
+math(EXPR FFT_SIZE "1 << ${LOG_FFT_SIZE}")
 #message(" FFT size is ${FFT_SIZE}")
 
 configure_file(
