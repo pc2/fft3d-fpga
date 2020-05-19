@@ -8,8 +8,8 @@
 #include <math.h>
 #define _USE_MATH_DEFINES
 
-#include "../include/fftfpga.h"
-#include "../include/helper.h"
+#include "fftfpga.h"
+#include "helper.h"
 
 #ifdef USE_FFTW
   #include <fftw3.h>

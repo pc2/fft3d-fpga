@@ -53,7 +53,12 @@ configure_file(
 )
 
 ## TODO: enumerate options to choose from
-set(FPGA_BOARD_NAME p520_hpc_sg280l CACHE STRING "Target Board")
+set(BOARD_NAME $ENV{FPGA_BOARD_NAME})
+if(BOARD_NAME)
+  set(FPGA_BOARD_NAME BOARD_NAME CACHE STRING "Target Board")
+else()
+  set(FPGA_BOARD_NAME p520_hpc_sg280l CACHE STRING "Target Board")
+endif()
 
 ## Flags for different target options
 set(AOC_FLAGS "-g -v -fpc -fp-relaxed -cl-single-precision-constant -no-interleaving=default" CACHE STRING "AOC compiler flags")
@@ -70,5 +75,5 @@ if (INTELFPGAOPENCL_FOUND)
   add_subdirectory(src/kernels/fft2d_kernels)
   add_subdirectory(src/kernels/fft3d_kernels)
 else()
-  message("Intel FPGA OpenCL SDK not found!")
+  message(WARNING, "Intel FPGA OpenCL SDK not found!")
 endif()

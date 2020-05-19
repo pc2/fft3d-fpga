@@ -15,14 +15,14 @@ build-all:
     - make fft1d_emulate
     - make fft2d_emulate
     - make fft3d_emulate
-    - chmod +x bin/test_fft_fpga bin/fft_fpga
+    - chmod +x bin/test_fft_fpga bin/host_fft_fpga
   artifacts:
     paths:
       - debug/bin/64pt_fft1d_emulate.aocx
       - debug/bin/64pt_fft2d_emulate.aocx
       - debug/bin/64pt_fft3d_emulate.aocx
       - debug/bin/test_fft_fpga
-      - debug/bin/fft_fpga
+      - debug/bin/host_fft_fpga
 
 test-all:
   stage: test

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(This fft_fpga)
+set(This host_fft_fpga)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/extern/argparse
@@ -18,4 +18,6 @@ set(Sources
 )
 add_executable(${This} ${Sources})
 
-target_link_libraries(${This} PUBLIC m ${IntelFPGAOpenCL_LIBRARIES})
+#target_link_libraries(${This} PUBLIC m ${IntelFPGAOpenCL_LIBRARIES})
+target_link_libraries(${This} PUBLIC m OpenCL)
+message("OPenCL Libraries: ${IntelFPGAOpenCL_LIBRARIES}")

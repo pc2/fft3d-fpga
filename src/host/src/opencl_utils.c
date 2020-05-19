@@ -8,8 +8,8 @@
 #include <ctype.h>  // tolower
 
 #include "CL/opencl.h"
-#include "../include/opencl_utils.h"
-#include "../include/fftfpga.h"
+#include "opencl_utils.h"
+#include "fftfpga.h"
 
 // function prototype
 static void tolowercase(const char *p, char *q);

@@ -15,8 +15,8 @@ FFTFPGA has been tested on Intel FPGAs namely, Stratix 10 GX 2800. This version 
 
 ### Dependencies
 
-- CMake >= 3.15
-- C Compiler with C99 support
+- CMake >= 3.10
+- C Compiler with C11 support
 - Intel OpenCL FPGA SDK
 
 Additional submodules used:

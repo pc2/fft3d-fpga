@@ -6,7 +6,7 @@
 
 #include "CL/opencl.h"
 
-#include "../../extern/argparse/argparse.h"
+#include "argparse.h"
 #include "include/fftfpga.h"
 #include "include/helper.h"
 
@@ -54,7 +54,7 @@ int main(int argc, const char **argv) {
   switch(dim){
     case 1:
       if(sp == 0){
-        printf("Work in progress\n");
+        fprintf(stderr, "Not implemented. Work in Progress\n");
         return 0;
       } 
       else{
@@ -73,7 +73,7 @@ int main(int argc, const char **argv) {
       break;
     case 2:
       if(sp == 0){
-        printf("Work in progress\n");
+        fprintf(stderr, "Not implemented. Work in Progress\n");
         return 0;
       } 
       else{
@@ -91,7 +91,7 @@ int main(int argc, const char **argv) {
       break;
     case 3:
       if(sp == 0){
-        printf("Work in progress\n");
+        fprintf(stderr, "Not implemented. Work in Progress\n");
         return 0;
       } 
       else{
@@ -108,7 +108,7 @@ int main(int argc, const char **argv) {
       break;
 
     default:
-      printf("No Dimension entered\n");
+      fprintf(stderr, "No dimension entered \n");
       return 0;
   }
 
@@ -116,6 +116,12 @@ int main(int argc, const char **argv) {
   fpga_final();
 
   if(timing.valid == 1){
+
+    if(timing.exec_t == 0.0){
+      fprintf(stderr, "Measurement invalid\n");
+      return 1;
+    }
+
     display_measures(timing, N, dim, iter, inv, sp);
   }
 
@@ -145,11 +151,6 @@ void print_config(int N, int dim, int iter, int inv, int sp){
  * \param  single precision floating point transformation
  */
 void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp){
-
-  if(timing.exec_t == 0.0){
-    fprintf(stderr, "Measurement invalid\n");
-    return;
-  }
 
   double exec = timing.exec_t / iter;
   double gpoints_per_sec = (pow(N, dim)  / (exec * 1e-3)) * 1e-9;
