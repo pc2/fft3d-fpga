@@ -285,24 +285,24 @@ TEST_F(fftFPGATest, ValidSp2dFFTDDR){
 }
 
 /**
- * \brief fftfpgaf_c2c_3d()
+ * \brief fftfpgaf_c2c_3d_bram()
  */
-TEST_F(fftFPGATest, ValidSp3dFFT){
+TEST_F(fftFPGATest, ValidSp3dBRAMFFT){
   int N = (1 << 6);
 
   size_t sz = sizeof(float2) * N * N * N;
   float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
   float2 *out = (float2*)fftfpgaf_complex_malloc(sz, 0);
   // null inp ptr input
-  fpga_t fft_time = fftfpgaf_c2c_3d(64, NULL, out, 0);
+  fpga_t fft_time = fftfpgaf_c2c_3d_bram(64, NULL, out, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // null out ptr input
-  fft_time = fftfpgaf_c2c_3d(64, inp, NULL, 0);
+  fft_time = fftfpgaf_c2c_3d_bram(64, inp, NULL, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // if N not a power of 2
-  fft_time = fftfpgaf_c2c_3d(63, inp, out, 0);
+  fft_time = fftfpgaf_c2c_3d_bram(63, inp, out, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // check correctness of output
@@ -310,10 +310,10 @@ TEST_F(fftFPGATest, ValidSp3dFFT){
   // malloc data to input
   fftf_create_data(inp, N * N * N);
 
-  int test = fpga_initialize("Intel(R) FPGA", "64pt_fft3d_emulate.aocx", 0, 1);
+  int test = fpga_initialize("Intel(R) FPGA", "64pt_fft3d_bram_emulate.aocx", 0, 1);
   ASSERT_NE(test, 1);
 
-  fft_time = fftfpgaf_c2c_3d(64, inp, out, 0);
+  fft_time = fftfpgaf_c2c_3d_bram(64, inp, out, 0);
 
   fftwf_complex* fftw_inp = (fftwf_complex*)fftwf_alloc_complex(sz);
   fftwf_complex* fftw_out = (fftwf_complex*)fftwf_alloc_complex(sz);

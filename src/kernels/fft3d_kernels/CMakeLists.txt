@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.10)
 set(This fft3d)
 
 # OpenCL and related files
-set(CL_FILES
-  ${CMAKE_SOURCE_DIR}/src/kernels/fft3d_kernels/fft3d.cl 
+set(CL_FILES_BRAM
+  ${CMAKE_SOURCE_DIR}/src/kernels/fft3d_kernels/fft3d_bram.cl 
 )
 set(CL_FILES_DDR
   ${CMAKE_SOURCE_DIR}/src/kernels/fft3d_kernels/fft3d_ddr.cl 
@@ -18,16 +18,17 @@ set(CL_INCLUDES
 
 # Command Output Names
 set(bst_name ${FFT_SIZE}pt_${This})
-set(bitstream_emulate ${bst_name}_emulate.aocx)
+set(bitstream_ddr_emulate ${bst_name}_ddr_emulate.aocx)
+set(bitstream_bram_emulate ${bst_name}_bram_emulate.aocx)
 set(bitstream_report ${bst_name}_report.aocr)
 set(bitstream_profile ${bst_name}_profile.aocx)
 set(bitstream_syn ${bst_name}.aocx)
 
 # Emulation
 add_custom_command(
-  OUTPUT ${bitstream_emulate}
+  OUTPUT ${bitstream_bram_emulate}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_emulate}
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES_BRAM} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_bram_emulate}
   MAIN_DEPENDENCY ${CL_FILES}
   COMMENT 
     "Building ${This} for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -35,14 +36,14 @@ add_custom_command(
 )
 
 add_custom_target(
-  ${This}_emulate DEPENDS ${bitstream_emulate}
+  ${This}_bram_emulate DEPENDS ${bitstream_bram_emulate}
 )
 
 # Emulation DDR
 add_custom_command(
-  OUTPUT ${bst_name}_ddr_emulate.aocx
+  OUTPUT ${bitstream_ddr_emulate}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES_DDR} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bst_name}_ddr_emulate.aocx
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES_DDR} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_ddr_emulate}
   MAIN_DEPENDENCY ${CL_FILES_DDR}
   COMMENT 
     "Building ${This} using DDR for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -50,7 +51,7 @@ add_custom_command(
 )
 
 add_custom_target(
-  ${This}_ddr_emulate DEPENDS ${bst_name}_ddr_emulate.aocx
+  ${This}_ddr_emulate DEPENDS ${bitstream_ddr_emulate}
 )
 
 # Report generation

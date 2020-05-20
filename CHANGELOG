@@ -14,7 +14,9 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0] - []
 
 ### Added
-- 1d FFT, 2d FFT and 3d FFT
+- 3d FFT in 2 varients, in bram and ddr transpose
+- 2d FFT in 2 varients, in bram and ddr transpose
+- 1d FFT
 - CI/CD
 - gtests
 - CMake build
