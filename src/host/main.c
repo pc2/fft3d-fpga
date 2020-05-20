@@ -108,7 +108,13 @@ int main(int argc, const char **argv) {
 
         fftf_create_data(inp, N * N * N);
 
-        timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
+        if(use_bram == 1){
+          timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv);
+        }
+        else{
+          timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
+        }
+
         free(inp);
         free(out);
       }

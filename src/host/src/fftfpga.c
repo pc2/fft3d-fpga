@@ -585,16 +585,12 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv){
   // Wait for all command queues to complete pending events
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-  printf("Waiting for FFT1\n");
   status = clFinish(queue2);
   checkError(status, "failed to finish");
-  printf("Waiting for Transpose\n");
   status = clFinish(queue3);
   checkError(status, "failed to finish");
-  printf("Waiting for FFT2\n");
   status = clFinish(queue4);
   checkError(status, "failed to finish");
-  printf("Waiting for Store1\n");
   status = clFinish(queue5);
   checkError(status, "failed to finish");
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
@@ -631,7 +627,7 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv){
 }
 
 
-fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, float2 *out, int inv) {
+fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv) {
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel fft_kernel = NULL, fft_kernel_2 = NULL;
   cl_kernel fetch_kernel = NULL, transpose_kernel = NULL, transpose_kernel_2 = NULL;
@@ -845,16 +841,12 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
   // Wait for all command queues to complete pending events
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-  printf("Waiting for FFT1\n");
   status = clFinish(queue2);
   checkError(status, "failed to finish");
-  printf("Waiting for Transpose\n");
   status = clFinish(queue3);
   checkError(status, "failed to finish");
-  printf("Waiting for FFT2\n");
   status = clFinish(queue4);
   checkError(status, "failed to finish");
-  printf("Waiting for Store1\n");
   status = clFinish(queue5);
   checkError(status, "failed to finish");
 
@@ -867,13 +859,10 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
   status = clEnqueueTask(queue3, store2_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose kernel");
 
-  printf("Waiting for Fetch2\n");
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-  printf("Waiting for FFT3\n");
   status = clFinish(queue2);
   checkError(status, "failed to finish");
-  printf("Waiting for Store2\n");
   status = clFinish(queue3);
   checkError(status, "failed to finish");
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
