@@ -5,8 +5,11 @@ cmake_minimum_required(VERSION 3.10)
 set(This fft2d)
 
 # OpenCL and related files
-set(CL_FILES 
-  ${CMAKE_SOURCE_DIR}/src/kernels/fft2d_kernels/fft2d.cl 
+set(CL_FILES_BRAM
+  ${CMAKE_SOURCE_DIR}/src/kernels/fft2d_kernels/fft2d_bram.cl 
+)
+set(CL_FILES_DDR
+  ${CMAKE_SOURCE_DIR}/src/kernels/fft2d_kernels/fft2d_ddr.cl 
 )
 set(CL_INCLUDES
  "-I${CMAKE_SOURCE_DIR}/src/kernels/common/fft_config.h"
@@ -14,24 +17,40 @@ set(CL_INCLUDES
 
 # Command Output Names
 set(bst_name ${FFT_SIZE}pt_${This})
-set(bitstream_emulate ${bst_name}_emulate.aocx)
+set(bitstream_ddr_emu ${bst_name}_ddr_emulate.aocx)
+set(bitstream_bram_emu ${bst_name}_bram_emulate.aocx)
 set(bitstream_report ${bst_name}_report.aocr)
 set(bitstream_profile ${bst_name}_profile.aocx)
 set(bitstream_syn ${bst_name}.aocx)
 
-# Emulation
+# Emulation DDR
 add_custom_command(
-  OUTPUT ${bitstream_emulate}
+  OUTPUT ${bitstream_ddr_emu}
   COMMAND 
-    ${IntelFPGAOpenCL_AOC} ${CL_FILES} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_emulate}
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES_DDR} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_ddr_emu}
   MAIN_DEPENDENCY ${CL_FILES}
   COMMENT 
-    "Building ${This} for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+    "Building ${This} for DDR emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
   VERBATIM
 )
 
 add_custom_target(
-  ${This}_emulate DEPENDS ${bitstream_emulate}
+  ${This}_ddr_emulate DEPENDS ${bitstream_ddr_emu}
+)
+
+# Emulation BRAM
+add_custom_command(
+  OUTPUT ${bitstream_bram_emu}
+  COMMAND 
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES_BRAM} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bitstream_bram_emu}
+  MAIN_DEPENDENCY ${CL_FILES}
+  COMMENT 
+    "Building ${This} for BRAM emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+  VERBATIM
+)
+
+add_custom_target(
+  ${This}_bram_emulate DEPENDS ${bitstream_bram_emu}
 )
 
 # Report generation

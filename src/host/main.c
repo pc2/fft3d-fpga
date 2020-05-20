@@ -19,7 +19,7 @@ static void print_config(int N, int dim, int iter, int inv, int sp);
 static void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp);
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 1, iter = 1, inv = 0, sp = 0;
+  int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, use_bram = 1;
   char *path = "64pt_fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0};
@@ -34,6 +34,7 @@ int main(int argc, const char **argv) {
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
+    OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_END(),
   };
@@ -84,7 +85,13 @@ int main(int argc, const char **argv) {
 
         fftf_create_data(inp, N * N);
 
-        timing = fftfpgaf_c2c_2d(N, inp, out, inv);
+        if(use_bram == 1){
+          timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv);
+        }
+        else{
+          timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
+        }
+
         free(inp);
         free(out);
       }
@@ -101,7 +108,7 @@ int main(int argc, const char **argv) {
 
         fftf_create_data(inp, N * N * N);
 
-        timing = fftfpgaf_c2c_3d(N, inp, out, inv);
+        timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
         free(inp);
         free(out);
       }

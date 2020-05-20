@@ -38,10 +38,16 @@ extern fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int ite
 // Single Precision 1d FFT
 extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter);
 
-// Single Precision 2d FFT
-extern fpga_t fftfpgaf_c2c_2d(int N, float2 *inp, float2 *out, int inv);
+// Single Precision 2d FFT using BRAM
+extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv);
 
-// Single Precision 3d FFT
+// Single Precision 2d FFT using DDR
+extern fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv);
+
+// Single Precision in BRAM 3d FFT
 extern fpga_t fftfpgaf_c2c_3d(int N, float2 *inp, float2 *out, int inv);
+
+// Single Precision in DDR 3d FFT
+extern fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv);
 
 #endif

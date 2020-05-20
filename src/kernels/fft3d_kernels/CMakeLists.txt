@@ -5,9 +5,13 @@ cmake_minimum_required(VERSION 3.10)
 set(This fft3d)
 
 # OpenCL and related files
-set(CL_FILES 
+set(CL_FILES
   ${CMAKE_SOURCE_DIR}/src/kernels/fft3d_kernels/fft3d.cl 
 )
+set(CL_FILES_DDR
+  ${CMAKE_SOURCE_DIR}/src/kernels/fft3d_kernels/fft3d_ddr.cl 
+)
+
 set(CL_INCLUDES
  "-I${CMAKE_SOURCE_DIR}/src/kernels/common/fft_config.h"
 )
@@ -32,6 +36,21 @@ add_custom_command(
 
 add_custom_target(
   ${This}_emulate DEPENDS ${bitstream_emulate}
+)
+
+# Emulation DDR
+add_custom_command(
+  OUTPUT ${bst_name}_ddr_emulate.aocx
+  COMMAND 
+    ${IntelFPGAOpenCL_AOC} ${CL_FILES_DDR} ${CL_INCLUDES} ${AOC_FLAGS} ${EMU_FLAGS} -board=${FPGA_BOARD_NAME} -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${bst_name}_ddr_emulate.aocx
+  MAIN_DEPENDENCY ${CL_FILES_DDR}
+  COMMENT 
+    "Building ${This} using DDR for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+  VERBATIM
+)
+
+add_custom_target(
+  ${This}_ddr_emulate DEPENDS ${bst_name}_ddr_emulate.aocx
 )
 
 # Report generation
