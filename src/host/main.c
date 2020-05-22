@@ -15,11 +15,11 @@ static const char *const usage[] = {
     NULL,
 };
 
-static void print_config(int N, int dim, int iter, int inv, int sp);
+static void print_config(int N, int dim, int iter, int inv, int sp, int use_bram);
 static void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp);
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, use_bram = 1;
+  int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, use_bram;
   char *path = "64pt_fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0};
@@ -45,7 +45,7 @@ int main(int argc, const char **argv) {
   argc = argparse_parse(&argparse, argc, argv);
 
   // Print to console the configuration chosen to execute during runtime
-  print_config(N, dim, iter, inv, sp);
+  print_config(N, dim, iter, inv, sp, use_bram);
 
   if(fpga_initialize(platform, path, use_svm, use_emulator)){
     return 1;
@@ -141,7 +141,7 @@ int main(int argc, const char **argv) {
   return 0;
 }
 
-void print_config(int N, int dim, int iter, int inv, int sp){
+void print_config(int N, int dim, int iter, int inv, int sp, int use_bram){
   printf("\n------------------------------------------\n");
   printf("FFT Configuration: \n");
   printf("--------------------------------------------\n");
@@ -151,6 +151,7 @@ void print_config(int N, int dim, int iter, int inv, int sp){
   printf("Direction          = %s \n", inv ? "Backward":"Forward");
   printf("Placement          = In Place    \n");
   printf("Iterations         = %d \n", iter);
+  printf("Transpose          = %s \n", use_bram ? "BRAM":"DDR");
   printf("--------------------------------------------\n\n");
 }
 
