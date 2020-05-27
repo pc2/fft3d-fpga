@@ -109,48 +109,8 @@ kernel void fft3da(int inverse) {
    }
 }
 
-// Transposes fetched data; stores them to global memory
-kernel void transpose(){
-
-  const unsigned N = (1 << LOGN);
-  unsigned revcolt, where, where_write;
-
-  local float2 buf[N * N];
-
-  // Perform N times N*N transpositions and transfers
-  for(unsigned p = 0; p < N; p++){
-
-    for(unsigned i = 0; i < N; i++){
-      for(unsigned k = 0; k < (N / 8); k++){
-        where = ((i << LOGN) + (k << LOGPOINTS));
-
-        #pragma unroll 8
-        for( unsigned u = 0; u < 8; u++){
-          buf[where + u] = read_channel_intel(chanoutfft1[u]);
-        }
-      }
-    }
-
-    for(unsigned i = 0; i < N; i++){
-      revcolt = bit_reversed(i, LOGN);
-
-      for(unsigned k = 0; k < (N / 8); k++){
-        where_write = ((k * N) + revcolt);
-
-        write_channel_intel(chaninfft2[0], buf[where_write]);               // 0
-        write_channel_intel(chaninfft2[1], buf[where_write + 4 * (N / 8) * N]);   // 32
-        write_channel_intel(chaninfft2[2], buf[where_write + 2 * (N / 8) * N]);   // 16
-        write_channel_intel(chaninfft2[3], buf[where_write + 6 * (N / 8) * N]);   // 48
-        write_channel_intel(chaninfft2[4], buf[where_write + (N / 8) * N]);       // 8
-        write_channel_intel(chaninfft2[5], buf[where_write + 5 * (N / 8) * N]);   // 40
-        write_channel_intel(chaninfft2[6], buf[where_write + 3 * (N / 8) * N]);   // 24
-        write_channel_intel(chaninfft2[7], buf[where_write + 7 * (N / 8) * N]);   // 54
-      }
-    }
-  }
-}
 __attribute__((max_global_work_dim(0)))
-kernel void transpose(int iter) {
+kernel void transpose() {
   const unsigned N = (1 << LOGN);
   const unsigned DEPTH = (1 << (LOGN + LOGN - LOGPOINTS));
 
@@ -161,71 +121,148 @@ kernel void transpose(int iter) {
     float2 buf[DEPTH][POINTS];
       
     // iterate within a 2d matrix
-    for(unsigned row = 0; row < DEPTH; row++){
+    for(unsigned row = 0; row < N; row++){
 
       // Temporary buffer to rotate before filling the matrix
       //float2 rotate_in[POINTS];
       float2 rotate_in[N];
 
+      // bit-reversed ordered input stored in normal order
       for(unsigned j = 0; j < (N / 8); j++){
-        rotate_in[j] = read_channel_intel(chaninfft1[0]);               // 0
-        rotate_in[4 * N / 8 + j] = read_channel_intel(chaninfft1[1]);   // 32
-        rotate_in[2 * N / 8 + j] = read_channel_intel(chaninfft1[2]);   // 16
-        rotate_in[6 * N / 8 + j] = read_channel_intel(chaninfft1[3]);   // 48
-        rotate_in[N / 8 + j] = read_channel_intel(chaninfft1[4]);       // 8
-        rotate_in[5 * N / 8 + j] = read_channel_intel(chaninfft1[5]);   // 40
-        rotate_in[3 * N / 8 + j] = read_channel_intel(chaninfft1[6]);   // 24
-        rotate_in[7 * N / 8 + j] = read_channel_intel(chaninfft1[7]]);   // 54
+        rotate_in[j] = read_channel_intel(chanoutfft1[0]);               // 0
+        rotate_in[4 * N / 8 + j] = read_channel_intel(chanoutfft1[1]);   // 32
+        rotate_in[2 * N / 8 + j] = read_channel_intel(chanoutfft1[2]);   // 16
+        rotate_in[6 * N / 8 + j] = read_channel_intel(chanoutfft1[3]);   // 48
+        rotate_in[N / 8 + j] = read_channel_intel(chanoutfft1[4]);       // 8
+        rotate_in[5 * N / 8 + j] = read_channel_intel(chanoutfft1[5]);   // 40
+        rotate_in[3 * N / 8 + j] = read_channel_intel(chanoutfft1[6]);   // 24
+        rotate_in[7 * N / 8 + j] = read_channel_intel(chanoutfft1[7]);   // 54
       }
 
-      for(unsigned j = 0; j < N / POINTS; j++){
+      /* For each outer loop iteration, N data items are processed.
+       * These N data items should reside in N/8 rows in buf.
+       * Each of this N/8 rows are rotated by 1
+       * Considering BRAM is POINTS wide, rotations should wrap around at POINTS
+       * row & (POINTS - 1)
+       */
+      unsigned rot = row & (POINTS - 1);
+
+      /*
+      printf("Iter - %d\n", row);
+
+      printf("Rotate In:\n");
+      for(unsigned j = 0; j < N; j++){
+        printf("%d: (%f %f)\n", j, rotate_in[j].x, rotate_in[j].y);
+      }
+      printf("\n");
+      */
+
+      // fill the POINTS wide row of the buffer each iteration
+      // N/8 rows filled with the same rotation
+      for(unsigned j = 0; j < N / 8; j++){
+
         #pragma unroll 8
-        for(unsigned i = 0; i < POINTS; i++){
-            buf[row][i] = rotate_in[((i + POINTS) - rot) & (POINTS -1)];
+        for(unsigned i = 0; i < 8; i++){
+            unsigned where = ((i + POINTS) - rot) & (POINTS - 1);
+            unsigned buf_row = (row * (N / 8)) + j;
+            buf[buf_row][i] = rotate_in[(j * POINTS) + where];
+            //buf[row][i] = rotate_in[((i + POINTS) - rot) & (POINTS -1)];
         }
       }
 
-      unsigned rot = row >> (LOGN - LOGPOINTS) & (POINTS - 1);
-
-      #pragma unroll 8
-      for(unsigned i = 0; i < POINTS; i++){
-          buf[row][i] = rotate_in[((i + POINTS) - rot) & (POINTS -1)];
+      /*
+      printf("Buffer: \n");
+      for(unsigned i = 0; i < DEPTH; i++){
+        printf("row %d: ", i);
+        for(unsigned j = 0; j < POINTS; j++){
+          printf(" (%f %f)", buf[i][j].x, buf[i][j].y);
+        }
+        printf("\n");
       }
-
+      printf("\n");
+      */
+      
     }
 
-
-    for(unsigned row = 0; row < DEPTH; row++){
-
-      float2 rotate_out[POINTS];
-
-      unsigned base = (row & (N / POINTS - 1)) << LOGN; // 0, N, 2N, ...
-      unsigned offset = row >> LOGN;                    // 0, .. N / POINTS
-
-      // store data into temp buffer
-      #pragma unroll 8
-      for(unsigned i = 0; i < POINTS; i++){
-        unsigned rot = ((POINTS + i - (row >> (LOGN - LOGPOINTS))) << (LOGN - LOGPOINTS)) & (N - 1);
-        unsigned row_rotate  = base + offset + rot;
-        rotate_out[i] = buf[row_rotate][i];
+    printf("Buffer: \n");
+    for(unsigned i = 0; i < DEPTH; i++){
+      printf("row %d: ", i);
+      for(unsigned j = 0; j < POINTS; j++){
+        printf(" (%f %f)", buf[i][j].x, buf[i][j].y);
       }
-
-      unsigned rot_out = row >> (LOGN - LOGPOINTS) & (POINTS - 1);
-
-      write_channel_intel(chanoutTranspose[0], rotate_out[(0 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[1], rotate_out[(1 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[2], rotate_out[(2 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[3], rotate_out[(3 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[4], rotate_out[(4 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[5], rotate_out[(5 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[6], rotate_out[(6 + rot_out) & (POINTS - 1)]);
-      write_channel_intel(chanoutTranspose[7], rotate_out[(7 + rot_out) & (POINTS - 1)]);
-
+      printf("\n\n");
     }
-  }
+    printf("\n");
+
+    for(unsigned row = 0; row < N; row++){
+
+      float2 rotate_out[N];
+
+      //unsigned base = (row & (N - 1)) << LOGN; // 0, N, 2N, ...
+      unsigned offset = 0;            // 0, .. N / POINTS
+      //unsigned offset = row;            // 0, .. N / POINTS
+      printf("Iter - %d\n", row);
+      printf("Rotate out:\n");
+
+      for(unsigned j = 0; j < N; j++){
+        unsigned rot = (DEPTH + j - row) << (LOGN - LOGPOINTS) & (DEPTH -1);
+        unsigned offset = row >> LOGPOINTS;
+        unsigned row_rotate = offset + rot;
+        unsigned col_rotate = j & (POINTS - 1);
+
+        rotate_out[j] = buf[row_rotate][col_rotate];
+
+        printf("from (%d,%d) to %d, (%f %f) : Rot - %d, offset - %d\n", row_rotate, col_rotate, j, rotate_out[j].x, rotate_out[j].y, rot, offset);
+      }
+      printf("\n");
+ 
+      /*
+      for(unsigned j = 0; j < N / 8; j++){
+
+        #pragma unroll 8
+        for(unsigned i = 0; i < POINTS; i++){
+          // rows: 0, N, 2N .. 7N. Then rotates to start with 7N, 0N ..
+          // say, {0, 4, 8, .. 28}th rows then {28, 0, 4, 8..} rows for 32^2
+          unsigned rot = (((N + i - row)) << (LOGN - LOGPOINTS)) & (N - 1);
+
+          unsigned row_rotate  = (j * N) + offset + rot;
+
+          rotate_out[(j * POINTS) + i] = buf[row_rotate][i];
+
+          printf("from (%d,%d) to %d, (%f %f) : Rot - %d\n", row_rotate, i, (j * POINTS) + i, rotate_out[(j * POINTS) + i].x, rotate_out[(j * POINTS) + i].y, rot);
+
+        }
+        printf("\n");
+      }
+      */
+
+      for(unsigned j = 0; j < N / 8; j++){
+        unsigned rot_out = row & ( (N / 8) - 1);
+        
+        /*
+        unsigned chan0 = j + rot_out;                 // 0
+        unsigned chan1 = (4 * N / 8) + j + rot_out;   // 32
+        unsigned chan2 = (2 * N / 8) + j + rot_out;   // 16
+        unsigned chan3 = (6 * N / 8) + j + rot_out;   // 48
+        unsigned chan4 = (N / 8) + j + rot_out;       // 8
+        unsigned chan5 = (5 * N / 8) + j + rot_out;   // 40
+        unsigned chan6 = (3 * N / 8) + j + rot_out;   // 24
+        unsigned chan7 = (7 * N / 8) + j + rot_out;   // 56
+        */
+        write_channel_intel(chaninfft2[0], rotate_out[j + rot_out]);               // 0
+        write_channel_intel(chaninfft2[1], rotate_out[4 * N / 8 + j + rot_out]);   // 32
+        write_channel_intel(chaninfft2[2], rotate_out[2 * N / 8 + j + rot_out]);   // 16
+        write_channel_intel(chaninfft2[3], rotate_out[6 * N / 8 + j + rot_out]);   // 48
+        write_channel_intel(chaninfft2[4], rotate_out[N / 8 + j + rot_out]);       // 8
+        write_channel_intel(chaninfft2[5], rotate_out[5 * N / 8 + j + rot_out]);   // 40
+        write_channel_intel(chaninfft2[6], rotate_out[3 * N / 8 + j + rot_out]);   // 24
+        write_channel_intel(chaninfft2[7], rotate_out[7 * N / 8 + j + rot_out]);   // 54
+      }
+    } // row
+
+  } // iter matrices
 
 }
-
 
 kernel void fft3db(int inverse) {
   const int N = (1 << LOGN);

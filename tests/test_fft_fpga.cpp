@@ -62,6 +62,7 @@ TEST_F(fftFPGATest, ValidSpMalloc){
 /**
  * \brief fftfpgaf_c2c_1d()
  */
+/*
 TEST_F(fftFPGATest, ValidSp1dFFT){
   int logN = 6;
   int N = (1 << 6);
@@ -143,10 +144,11 @@ TEST_F(fftFPGATest, ValidSp1dFFT){
   free(inp);
   free(out);
 }
-
+*/
 /**
  * \brief fftfpgaf_c2c_2d_bram()
  */
+/*
 TEST_F(fftFPGATest, ValidSp2dFFTBRAM){
   int N = (1 << 6);
 
@@ -213,10 +215,11 @@ TEST_F(fftFPGATest, ValidSp2dFFTBRAM){
   free(inp);
   free(out);
 }
-
+*/
 /**
  * \brief fftfpgaf_c2c_2d_ddr()
  */
+/*
 TEST_F(fftFPGATest, ValidSp2dFFTDDR){
   int N = (1 << 6);
 
@@ -283,10 +286,11 @@ TEST_F(fftFPGATest, ValidSp2dFFTDDR){
   free(inp);
   free(out);
 }
-
+*/
 /**
  * \brief fftfpgaf_c2c_3d_bram()
  */
+/*
 TEST_F(fftFPGATest, ValidSp3dBRAMFFT){
   int N = (1 << 6);
 
@@ -353,21 +357,22 @@ TEST_F(fftFPGATest, ValidSp3dBRAMFFT){
   free(inp);
   free(out);
 }
+*/
 /**
  * \brief fftfpgaf_c2c_3d_ddr()
  */
 TEST_F(fftFPGATest, ValidSp3dFFTDDR){
-  int N = (1 << 6);
+  int N = (1 << 4);
 
   size_t sz = sizeof(float2) * N * N * N;
   float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
   float2 *out = (float2*)fftfpgaf_complex_malloc(sz, 0);
   // null inp ptr input
-  fpga_t fft_time = fftfpgaf_c2c_3d_ddr(64, NULL, out, 0);
+  fpga_t fft_time = fftfpgaf_c2c_3d_ddr(N, NULL, out, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // null out ptr input
-  fft_time = fftfpgaf_c2c_3d_ddr(64, inp, NULL, 0);
+  fft_time = fftfpgaf_c2c_3d_ddr(N, inp, NULL, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // if N not a power of 2
@@ -379,10 +384,10 @@ TEST_F(fftFPGATest, ValidSp3dFFTDDR){
   // malloc data to input
   fftf_create_data(inp, N * N * N);
 
-  int test = fpga_initialize("Intel(R) FPGA", "64pt_fft3d_ddr_emulate.aocx", 0, 1);
+  int test = fpga_initialize("Intel(R) FPGA", "16pt_fft3d_ddr_emulate.aocx", 0, 1);
   ASSERT_NE(test, 1);
 
-  fft_time = fftfpgaf_c2c_3d_ddr(64, inp, out, 0);
+  fft_time = fftfpgaf_c2c_3d_ddr(N, inp, out, 0);
 
   fftwf_complex* fftw_inp = (fftwf_complex*)fftwf_alloc_complex(sz);
   fftwf_complex* fftw_out = (fftwf_complex*)fftwf_alloc_complex(sz);
@@ -405,7 +410,7 @@ TEST_F(fftFPGATest, ValidSp3dFFTDDR){
         * (fftw_out[i][0] - out[i].x) + 
         (fftw_out[i][1] - out[i].y) * (fftw_out[i][1] - out[i].y);
 
-    //printf("%d : fftw[%d] = (%lf, %lf) fpga = (%lf, %lf) \n", i, i, fftw_out[i][0], fftw_out[i][1], out[i].x, out[i].y);
+    printf("%d : fftw[%d] = (%lf, %lf) fpga = (%lf, %lf) \n", i, i, fftw_out[i][0], fftw_out[i][1], out[i].x, out[i].y);
     mag_sum += magnitude;
     noise_sum += noise;
   }

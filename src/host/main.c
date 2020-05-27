@@ -114,7 +114,11 @@ int main(int argc, const char **argv) {
         else{
           timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
         }
-
+        /*
+        for(size_t i = 0; i < (N*N*N); i++){
+          printf("%d - %lf %lf \n", out[i].x, out[i].y);
+        }
+        */
         free(inp);
         free(out);
       }
