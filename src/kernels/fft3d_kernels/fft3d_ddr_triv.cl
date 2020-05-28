@@ -124,10 +124,14 @@ kernel void transpose(){
       for(unsigned k = 0; k < (N / 8); k++){
         where = ((i << LOGN) + (k << LOGPOINTS));
 
-        #pragma unroll 8
-        for( unsigned u = 0; u < 8; u++){
-          buf[where + u] = read_channel_intel(chanoutfft1[u]);
-        }
+        buf[where + 0] = read_channel_intel(chanoutfft1[0]);
+        buf[where + 1] = read_channel_intel(chanoutfft1[1]);
+        buf[where + 2] = read_channel_intel(chanoutfft1[2]);
+        buf[where + 3] = read_channel_intel(chanoutfft1[3]);
+        buf[where + 4] = read_channel_intel(chanoutfft1[4]);
+        buf[where + 5] = read_channel_intel(chanoutfft1[5]);
+        buf[where + 6] = read_channel_intel(chanoutfft1[6]);
+        buf[where + 7] = read_channel_intel(chanoutfft1[7]);
       }
     }
 
