@@ -62,7 +62,6 @@ TEST_F(fftFPGATest, ValidSpMalloc){
 /**
  * \brief fftfpgaf_c2c_1d()
  */
-/*
 TEST_F(fftFPGATest, ValidSp1dFFT){
   int logN = 6;
   int N = (1 << 6);
@@ -144,11 +143,9 @@ TEST_F(fftFPGATest, ValidSp1dFFT){
   free(inp);
   free(out);
 }
-*/
 /**
  * \brief fftfpgaf_c2c_2d_bram()
  */
-/*
 TEST_F(fftFPGATest, ValidSp2dFFTBRAM){
   int N = (1 << 6);
 
@@ -215,11 +212,9 @@ TEST_F(fftFPGATest, ValidSp2dFFTBRAM){
   free(inp);
   free(out);
 }
-*/
 /**
  * \brief fftfpgaf_c2c_2d_ddr()
  */
-/*
 TEST_F(fftFPGATest, ValidSp2dFFTDDR){
   int N = (1 << 6);
 
@@ -286,11 +281,9 @@ TEST_F(fftFPGATest, ValidSp2dFFTDDR){
   free(inp);
   free(out);
 }
-*/
 /**
  * \brief fftfpgaf_c2c_3d_bram()
  */
-/*
 TEST_F(fftFPGATest, ValidSp3dBRAMFFT){
   int N = (1 << 6);
 
@@ -357,7 +350,6 @@ TEST_F(fftFPGATest, ValidSp3dBRAMFFT){
   free(inp);
   free(out);
 }
-*/
 /**
  * \brief fftfpgaf_c2c_3d_ddr()
  */
@@ -384,7 +376,7 @@ TEST_F(fftFPGATest, ValidSp3dFFTDDR){
   // malloc data to input
   fftf_create_data(inp, N * N * N);
 
-  int test = fpga_initialize("Intel(R) FPGA", "16pt_fft3d_ddr_emulate.aocx", 0, 1);
+  int test = fpga_initialize("Intel(R) FPGA", "128pt_fft3d_ddr_emulate.aocx", 0, 1);
   ASSERT_NE(test, 1);
 
   fft_time = fftfpgaf_c2c_3d_ddr(N, inp, out, 0);

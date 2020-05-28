@@ -61,10 +61,14 @@ kernel void fetch(global volatile float2 * restrict src) {
     float2 buf[N];
     for(unsigned i = 0; i < (N / 8); i++){
 
-        #pragma unroll 8
-        for(unsigned u = 0; u < 8; u++){
-          buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + u] = read_channel_intel(chaninfetch[u]);
-        }
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 0] = read_channel_intel(chaninfetch[0]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 1] = read_channel_intel(chaninfetch[1]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 2] = read_channel_intel(chaninfetch[2]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 3] = read_channel_intel(chaninfetch[3]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 4] = read_channel_intel(chaninfetch[4]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 5] = read_channel_intel(chaninfetch[5]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 6] = read_channel_intel(chaninfetch[6]);
+      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 7] = read_channel_intel(chaninfetch[7]);
     }
 
     for(unsigned j = 0; j < (N / 8); j++){
@@ -142,10 +146,14 @@ kernel void transpose(global float2 * restrict dest) {
       for(unsigned k = 0; k < (N / 8); k++){
         where_read = ((i << LOGN) + (k << LOGPOINTS));
 
-        #pragma unroll 8
-        for( unsigned u = 0; u < 8; u++){
-          buf[where_read + u] = read_channel_intel(chanoutfft[u]);
-        }
+        buf[where_read + 0] = read_channel_intel(chanoutfft[0]);
+        buf[where_read + 1] = read_channel_intel(chanoutfft[1]);
+        buf[where_read + 2] = read_channel_intel(chanoutfft[2]);
+        buf[where_read + 3] = read_channel_intel(chanoutfft[3]);
+        buf[where_read + 4] = read_channel_intel(chanoutfft[4]);
+        buf[where_read + 5] = read_channel_intel(chanoutfft[5]);
+        buf[where_read + 6] = read_channel_intel(chanoutfft[6]);
+        buf[where_read + 7] = read_channel_intel(chanoutfft[7]);
       }
     }
 
@@ -173,10 +181,14 @@ kernel void transpose(global float2 * restrict dest) {
       for(unsigned j = 0; j < (N / 8); j++){
         where = ((i << LOGN) + (j << LOGPOINTS));
         
-        #pragma unroll 8
-        for(unsigned u = 0; u < 8; u++){
-          buf[where + u] = read_channel_intel(chanoutfft[u]);
-        }
+        buf[where + 0] = read_channel_intel(chanoutfft[0]);
+        buf[where + 1] = read_channel_intel(chanoutfft[1]);
+        buf[where + 2] = read_channel_intel(chanoutfft[2]);
+        buf[where + 3] = read_channel_intel(chanoutfft[3]);
+        buf[where + 4] = read_channel_intel(chanoutfft[4]);
+        buf[where + 5] = read_channel_intel(chanoutfft[5]);
+        buf[where + 6] = read_channel_intel(chanoutfft[6]);
+        buf[where + 7] = read_channel_intel(chanoutfft[7]);
       }
     }
 
@@ -259,10 +271,14 @@ kernel void transpose3d(){
       for(unsigned j = 0; j < (N / 8); j++){
         where = ((i << LOGN) + (j << LOGPOINTS));
         
-        #pragma unroll 8
-        for(unsigned u = 0; u < 8; u++){
-          buf[where + u] = read_channel_intel(chanoutfft2[u]);
-        }
+        buf[where + 0] = read_channel_intel(chanoutfft2[0]);
+        buf[where + 1] = read_channel_intel(chanoutfft2[1]);
+        buf[where + 2] = read_channel_intel(chanoutfft2[2]);
+        buf[where + 3] = read_channel_intel(chanoutfft2[3]);
+        buf[where + 4] = read_channel_intel(chanoutfft2[4]);
+        buf[where + 5] = read_channel_intel(chanoutfft2[5]);
+        buf[where + 6] = read_channel_intel(chanoutfft2[6]);
+        buf[where + 7] = read_channel_intel(chanoutfft2[7]);
       }
     }
 
@@ -294,10 +310,14 @@ kernel void transpose3d(){
       for( unsigned j = 0; j < (N / 8); j++){
         where = (j * N * 8) + i;
   
-        #pragma unroll 8
-        for(unsigned u = 0; u < 8; u++){
-          write_channel_intel(chaninfetch[u], buf[where + (u << LOGN)]);
-        }
+        write_channel_intel(chaninfetch[0], buf[where + (0 << LOGN)]);
+        write_channel_intel(chaninfetch[1], buf[where + (1 << LOGN)]);
+        write_channel_intel(chaninfetch[2], buf[where + (2 << LOGN)]);
+        write_channel_intel(chaninfetch[3], buf[where + (3 << LOGN)]);
+        write_channel_intel(chaninfetch[4], buf[where + (4 << LOGN)]);
+        write_channel_intel(chaninfetch[5], buf[where + (5 << LOGN)]);
+        write_channel_intel(chaninfetch[6], buf[where + (6 << LOGN)]);
+        write_channel_intel(chaninfetch[7], buf[where + (7 << LOGN)]);
       }
     }
 

@@ -22,7 +22,7 @@ int main(int argc, const char **argv) {
   int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, use_bram;
   char *path = "64pt_fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
-  fpga_t timing = {0.0, 0.0, 0.0};
+  fpga_t timing = {0.0, 0.0, 0.0, 0};
   int use_svm = 0, use_emulator = 0;
 
   struct argparse_option options[] = {
