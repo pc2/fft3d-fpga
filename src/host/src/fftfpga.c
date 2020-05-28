@@ -646,9 +646,9 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv) {
 
   // Device memory buffers
   cl_mem d_inData, d_outData;
-  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * N * N, NULL, &status);
+  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * N * N * N, NULL, &status);
   checkError(status, "Failed to allocate input device buffer\n");
-  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * N * N, NULL, &status);
+  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * N * N * N, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
  // Copy data from host to device
@@ -769,9 +769,9 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
 
   // Device memory buffers
   cl_mem d_inData, d_outData;
-  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * num_pts, NULL, &status);
+  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate input device buffer\n");
-  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * num_pts, NULL, &status);
+  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
  // Copy data from host to device
