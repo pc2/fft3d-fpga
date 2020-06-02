@@ -8,30 +8,30 @@ stages:
 build-all:
   stage: build
   script:
-    - rm -rf debug
-    - mkdir -p debug && cd debug
+    - rm -rf build
+    - mkdir -p build && cd build
     - cmake ..
     - make
-    - make fft1d_emulate
-    - make fft2d_ddr_emulate
-    - make fft2d_bram_emulate
-    - make fft3d_ddr_emulate
-    - make fft3d_bram_emulate
-    - chmod +x bin/test_fft_fpga bin/host_fft_fpga
+    - make fft1d_emu
+    - make fft2d_ddr_emu
+    - make fft2d_bram_emu
+    - make fft3d_ddr_emu
+    - make fft3d_bram_emu
+    - chmod +x bin/host bin/test
   artifacts:
     paths:
-      - debug/bin/64pt_fft1d_emulate.aocx
-      - debug/bin/64pt_fft2d_bram_emulate.aocx
-      - debug/bin/64pt_fft2d_ddr_emulate.aocx
-      - debug/bin/64pt_fft3d_bram_emulate.aocx
-      - debug/bin/64pt_fft3d_ddr_emulate.aocx
-      - debug/bin/test_fft_fpga
-      - debug/bin/host_fft_fpga
+      - build/bin/64_fft1d_emulate.aocx
+      - build/bin/64_fft2d_bram_emulate.aocx
+      - build/bin/64_fft2d_ddr_emulate.aocx
+      - build/bin/64_fft3d_bram_emulate.aocx
+      - build/bin/64_fft3d_ddr_emulate.aocx
+      - build/bin/test
+      - build/bin/host
 
 test-all:
   stage: test
   script:
-    - cd debug/bin/
-    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test_fft_fpga
+    - cd build/bin/
+    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test
   dependencies:
     - build-all

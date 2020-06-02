@@ -3,7 +3,7 @@
 #include "fft_8.cl" 
 
 // Source the log(size) (log(1k) = 10) from a header shared with the host code
-#include "../common/fft_config.h"
+#include "fft_config.h"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 channel float2 chaninfft[8] __attribute__((depth(8)));

@@ -32,9 +32,15 @@ find_package(IntelFPGAOpenCL REQUIRED)
 # OpenCL host target generation
 add_subdirectory(api/)
 
-#if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-#  enable_testing()
-#  add_subdirectory(tests)
+# GTest Setup
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  option(PACKAGE_TESTS "Build the tests" ON)
+endif()
+
+#if(PACKAGE_TESTS)
+#    enable_testing()
+#    include(GoogleTest)
+#    add_subdirectory(tests)
 #endif()
 
 # OpenCL kernel targets generation

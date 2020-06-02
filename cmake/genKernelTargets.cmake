@@ -13,7 +13,8 @@ function(gen_fft_targets)
   foreach(kernel_fname ${ARGN})
 
     set(CL_SRC "${CL_PATH}/${kernel_fname}.cl")
-    set(CL_INCLUDES "-I${CMAKE_BINARY_DIR}/kernels/common/fft_config.h")
+    set(CL_INCLUDES "-I${PROJECT_BINARY_DIR}/kernels/common/fft_config.h")
+    message("${CL_INCLUDES}")
 
     set(EMU_BSTREAM 
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FFT_SIZE}_${kernel_fname}_emu.aocx")
@@ -30,7 +31,8 @@ function(gen_fft_targets)
     )
     
     add_custom_target(${kernel_fname}_emu
-      DEPENDS ${EMU_BSTREAM} "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h"
+      DEPENDS "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h" ${EMU_BSTREAM} 
+      SOURCES "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h"
       COMMENT 
         "Building ${kernel_fname} for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
     )
