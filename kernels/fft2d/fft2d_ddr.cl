@@ -65,7 +65,7 @@
 #include "fft_8.cl" 
 
 // Source the log(size) (log(1k) = 10) from a header shared with the host code
-#include "../common/fft_config.h"
+#include "fft_config.h"
 
 // Declare channels for kernel to kernel communication
 

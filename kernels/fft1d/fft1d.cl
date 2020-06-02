@@ -48,7 +48,7 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "../common/fft_config.h"
+#include "fft_config.h"
 
 #define min(a,b) (a<b?a:b)
 

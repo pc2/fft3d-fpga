@@ -2,12 +2,8 @@
 
 #include "fft_8.cl" 
 
-// Macros for the 8 point 1d FFT
-#define LOGPOINTS 3
-#define POINTS (1 << LOGPOINTS)
-
 // Source the log(size) (log(1k) = 10) from a header shared with the host code
-#include "../common/fft_config.h"
+#include "fft_config.h"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 channel float2 chaninfft1[8] __attribute__((depth(8)));
