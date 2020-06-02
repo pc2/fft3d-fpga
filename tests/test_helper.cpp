@@ -5,8 +5,8 @@
 
 extern "C" {
   #include "CL/opencl.h"
-  #include "../src/host/include/fftfpga.h"
-  #include "../src/host/include/helper.h"
+  #include "fftfpga.h"
+  #include "helper.h"
 }
 
 /**

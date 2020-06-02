@@ -4,7 +4,7 @@
 
 extern "C" {
   #include "CL/opencl.h"
-  #include "../src/host/include/opencl_utils.h"
+  #include "opencl_utils.h"
 }
 
 class OpenCLUtilsTest : public :: testing :: Test {
