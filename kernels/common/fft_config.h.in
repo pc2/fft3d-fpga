@@ -1,0 +1,15 @@
+// Arjun Ramaswami
+
+#ifndef FFT_CONFIG_H
+#define FFT_CONFIG_H
+
+#define LOGPOINTS @LOG_POINTS@
+#define POINTS @POINTS@
+
+#define LOGN @LOG_FFT_SIZE@
+#define FFT_SIZE @FFT_SIZE@ 
+
+#endif // FFT_CONFIG_H
+
+
+

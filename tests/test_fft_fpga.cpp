@@ -354,7 +354,7 @@ TEST_F(fftFPGATest, ValidSp3dBRAMFFT){
  * \brief fftfpgaf_c2c_3d_ddr()
  */
 TEST_F(fftFPGATest, ValidSp3dFFTDDR){
-  int N = (1 << 4);
+  int N = (1 << 6);
 
   size_t sz = sizeof(float2) * N * N * N;
   float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
@@ -376,7 +376,7 @@ TEST_F(fftFPGATest, ValidSp3dFFTDDR){
   // malloc data to input
   fftf_create_data(inp, N * N * N);
 
-  int test = fpga_initialize("Intel(R) FPGA", "128pt_fft3d_ddr_emulate.aocx", 0, 1);
+  int test = fpga_initialize("Intel(R) FPGA", "64pt_fft3d_ddr_emulate.aocx", 0, 1);
   ASSERT_NE(test, 1);
 
   fft_time = fftfpgaf_c2c_3d_ddr(N, inp, out, 0);

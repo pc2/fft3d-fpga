@@ -2,10 +2,6 @@
 
 #include "fft_8.cl" 
 
-// Macros for the 8 point 1d FFT
-#define LOGPOINTS 3
-#define POINTS (1 << LOGPOINTS)
-
 // Source the log(size) (log(1k) = 10) from a header shared with the host code
 #include "../common/fft_config.h"
 
