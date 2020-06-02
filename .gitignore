@@ -1,12 +1,10 @@
-docs/
-data/
-bin/
 build/
 debug/
+bin/
 fpgabitstream/
-scripts/
 reports/
 vscode/
+
 tags
 *.DS_Store
 slurm*
@@ -14,4 +12,5 @@ slurm*
 *.vscode
 *.log
 
-fft_config.h
+docs/
+data/
