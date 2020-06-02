@@ -107,7 +107,7 @@ kernel void fft3da(int inverse) {
 
 __attribute__((max_global_work_dim(0)))
 kernel void transpose() {
-  const unsigned N = (1 << LOGN);
+ const unsigned N = (1 << LOGN);
   const unsigned DEPTH = (1 << (LOGN + LOGN - LOGPOINTS));
 
   // iterate over N 2d matrices
@@ -121,18 +121,18 @@ kernel void transpose() {
 
       // Temporary buffer to rotate before filling the matrix
       //float2 rotate_in[POINTS];
-      float2 buf_bitrev[N];
+      float2 rotate_in[N];
 
       // bit-reversed ordered input stored in normal order
       for(unsigned j = 0; j < (N / 8); j++){
-        buf_bitrev[j] = read_channel_intel(chanoutfft1[0]);               // 0
-        buf_bitrev[4 * N / 8 + j] = read_channel_intel(chanoutfft1[1]);   // 32
-        buf_bitrev[2 * N / 8 + j] = read_channel_intel(chanoutfft1[2]);   // 16
-        buf_bitrev[6 * N / 8 + j] = read_channel_intel(chanoutfft1[3]);   // 48
-        buf_bitrev[N / 8 + j] = read_channel_intel(chanoutfft1[4]);       // 8
-        buf_bitrev[5 * N / 8 + j] = read_channel_intel(chanoutfft1[5]);   // 40
-        buf_bitrev[3 * N / 8 + j] = read_channel_intel(chanoutfft1[6]);   // 24
-        buf_bitrev[7 * N / 8 + j] = read_channel_intel(chanoutfft1[7]);   // 54
+        rotate_in[j] = read_channel_intel(chanoutfft1[0]);               // 0
+        rotate_in[4 * N / 8 + j] = read_channel_intel(chanoutfft1[1]);   // 32
+        rotate_in[2 * N / 8 + j] = read_channel_intel(chanoutfft1[2]);   // 16
+        rotate_in[6 * N / 8 + j] = read_channel_intel(chanoutfft1[3]);   // 48
+        rotate_in[N / 8 + j] = read_channel_intel(chanoutfft1[4]);       // 8
+        rotate_in[5 * N / 8 + j] = read_channel_intel(chanoutfft1[5]);   // 40
+        rotate_in[3 * N / 8 + j] = read_channel_intel(chanoutfft1[6]);   // 24
+        rotate_in[7 * N / 8 + j] = read_channel_intel(chanoutfft1[7]);   // 54
       }
 
       /* For each outer loop iteration, N data items are processed.
@@ -146,21 +146,12 @@ kernel void transpose() {
       // fill the POINTS wide row of the buffer each iteration
       // N/8 rows filled with the same rotation
       for(unsigned j = 0; j < N / 8; j++){
- 
-        // Bitreverse read from rotate_in
-        float2 rotate_in[POINTS];
 
-        #pragma unroll 8
-        for(unsigned i = 0; i < 8; i++){
-          rotate_in[i] = buf_bitrev[(j * POINTS) + i];
-        }
-
-        // Rotate write into buffer
         #pragma unroll 8
         for(unsigned i = 0; i < 8; i++){
             unsigned where = ((i + POINTS) - rot) & (POINTS - 1);
             unsigned buf_row = (row * (N / 8)) + j;
-            buf[buf_row][i] = rotate_in[where];
+            buf[buf_row][i] = rotate_in[(j * POINTS) + where];
         }
       }
     }
@@ -181,8 +172,7 @@ kernel void transpose() {
       }
 
       for(unsigned j = 0; j < N / 8; j++){
-        //unsigned rev = bit_reversed((j * POINTS), LOGN);
-        unsigned rev = j;
+        unsigned rev = bit_reversed((j * POINTS), LOGN);
         unsigned rot_out = row & (N - 1);
         
         unsigned chan0 = (rot_out + rev) & (N - 1);                 // 0
@@ -205,9 +195,8 @@ kernel void transpose() {
       }
     } // row
 
-  } // iter matrices
+  } // iter matrice
 }
-
 
 kernel void fft3db(int inverse) {
   const int N = (1 << LOGN);
