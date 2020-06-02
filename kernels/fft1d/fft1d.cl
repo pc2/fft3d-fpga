@@ -52,8 +52,6 @@
 
 #define min(a,b) (a<b?a:b)
 
-#define LOGPOINTS       3
-#define POINTS          (1 << LOGPOINTS)
 #define NUM_FETCHES     (1 << (LOGN - LOGPOINTS))
 
 // Log of how much to fetch at once for one area of input buffer.
