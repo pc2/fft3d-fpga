@@ -5,7 +5,9 @@ project(fft-fpga VERSION 0.2
             DESCRIPTION "Library for FFT using FPGAs"
             LANGUAGES C CXX)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
+option(USE_DEBUG "Debug Mode" OFF)
 
 # Setup submodules that are required
 find_package(Git QUIET)
