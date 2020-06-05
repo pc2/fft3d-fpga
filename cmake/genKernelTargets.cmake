@@ -14,15 +14,15 @@ function(gen_fft_targets)
 
     set(CL_SRC "${CL_PATH}/${kernel_fname}.cl")
     set(CL_INCL_DIR "-I${CMAKE_BINARY_DIR}/kernels/common")
-    set(CL_INCLUDES "-I${CMAKE_BINARY_DIR}/kernels/common/fft_config.h")
+    set(CL_INCL_HEADER "-I${CMAKE_BINARY_DIR}/kernels/common/fft_config.h")
     set(CL_HEADER "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h")
 
     set(EMU_BSTREAM 
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FFT_SIZE}_${kernel_fname}_emu.aocx")
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/emu_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
     set(REP_BSTREAM 
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FFT_SIZE}_${kernel_fname}_rep.aocr")
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/rep_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocr")
     set(SYN_BSTREAM 
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FFT_SIZE}_${kernel_fname}.aocx")
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/syn_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
 
     # Emulation Target
     add_custom_command(OUTPUT ${EMU_BSTREAM}
@@ -32,8 +32,7 @@ function(gen_fft_targets)
     )
     
     add_custom_target(${kernel_fname}_emu
-      DEPENDS "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h" ${EMU_BSTREAM} 
-      SOURCES "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h"
+      DEPENDS ${EMU_BSTREAM} ${CL_SRC} ${CL_HEADER}
       COMMENT 
         "Building ${kernel_fname} for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
     )
@@ -46,14 +45,14 @@ function(gen_fft_targets)
     )
     
     add_custom_target(${kernel_fname}_rep
-      DEPENDS ${REP_BSTREAM} "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h"
+      DEPENDS ${REP_BSTREAM} ${CL_SRC} ${CL_HEADER}
       COMMENT 
         "Building a report for ${kernel_fname} to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
     )
 
     # Synthesis Target
     add_custom_command(OUTPUT ${SYN_BSTREAM}
-      COMMAND ${IntelFPGAOpenCL_AOC} ${CL_SRC} ${CL_INCLUDES} ${AOC_FLAGS} -board=${FPGA_BOARD_NAME}  -o ${SYN_BSTREAM}
+      COMMAND ${IntelFPGAOpenCL_AOC} ${CL_SRC} ${CL_INCL_DIR} ${AOC_FLAGS}   -board=${FPGA_BOARD_NAME}  -o ${SYN_BSTREAM}
       MAIN_DEPENDENCY ${CL_SRC}
     )
     
