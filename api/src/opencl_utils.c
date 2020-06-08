@@ -9,7 +9,7 @@
 
 #include "CL/opencl.h"
 #include "opencl_utils.h"
-#include "fftfpga.h"
+#include "fftfpga/fftfpga.h"
 
 // function prototype
 static void tolowercase(const char *p, char *q);

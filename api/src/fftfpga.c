@@ -8,9 +8,9 @@
 #include <CL/cl_ext_intelfpga.h> // to disable interleaving & transfer data to specific banks - CL_CHANNEL_1_INTELFPGA
 #include "CL/opencl.h"
 
-#include "fftfpga.h"
+#include "fftfpga/fftfpga.h"
 #include "opencl_utils.h"
-#include "helper.h"
+#include "misc.h"
 
 #ifndef KERNEL_VARS
 #define KERNEL_VARS
