@@ -8,10 +8,10 @@ cmake_minimum_required(VERSION 3.10)
 #   - ${kernel_name}_rep: to generate report
 #   - ${kernel_name}_syn: to generate synthesis binary
 ##
-set(CL_PATH "${CMAKE_SOURCE_DIR}/kernels/fft2d")
+set(CL_PATH "${fftkernelsfpga_SOURCE_DIR}/fft2d")
 set(kernels fft2d_bram fft2d_ddr)
 
-include(${CMAKE_SOURCE_DIR}/cmake/genKernelTargets.cmake)
+include(${fftkernelsfpga_SOURCE_DIR}/cmake/genKernelTargets.cmake)
 
 if (INTELFPGAOPENCL_FOUND)
   gen_fft_targets(${kernels})

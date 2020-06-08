@@ -14,7 +14,6 @@ function(gen_fft_targets)
 
     set(CL_SRC "${CL_PATH}/${kernel_fname}.cl")
     set(CL_INCL_DIR "-I${CMAKE_BINARY_DIR}/kernels/common")
-    set(CL_INCL_HEADER "-I${CMAKE_BINARY_DIR}/kernels/common/fft_config.h")
     set(CL_HEADER "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h")
 
     set(EMU_BSTREAM 

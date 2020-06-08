@@ -1,4 +1,4 @@
-// Authors: Arjun Ramaswami
+// Author: Arjun Ramaswami
 
 #ifndef FFTFPGA_H
 #define FFTFPGA_H
