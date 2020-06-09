@@ -17,7 +17,7 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram =0;
+  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0;
   char *path = "fft3d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -60,11 +60,9 @@ int main(int argc, const char **argv) {
     fftf_create_data(inp, N * N * N);
 
     if(use_bram == 1){
-      printf("calling bram\n");
       timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv);
     }
     else{
-      printf("calling ddr\n");
       timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
     }
 
