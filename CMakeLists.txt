@@ -29,6 +29,16 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/extern/hlslib/cma
 # Find hlslib Intel OpenCL kernels
 find_package(IntelFPGAOpenCL REQUIRED)
 
+# Find FFTW
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/extern/findFFTW)
+
+find_package(FFTW)
+if(FFTW_FOUND)
+  message("-- FFTW library found")
+else()
+  message(WARNING, "FFTW library not found")
+endif()
+
 # Link argparse as static library
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/argparse)
 
@@ -36,3 +46,16 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/extern/argparse)
 add_subdirectory(api)
 add_subdirectory(kernels)
 add_subdirectory(examples)
+
+# GTest Setup
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  option(PACKAGE_TESTS "Build the tests" ON)
+endif()
+
+if(PACKAGE_TESTS)
+    enable_testing()
+    include(GoogleTest)
+    add_subdirectory(tests)
+endif()
+
+# TODO: shift to external project instead of submodules as suggested by GTest
