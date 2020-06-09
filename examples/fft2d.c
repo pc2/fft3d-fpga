@@ -9,6 +9,7 @@
 
 #include "argparse.h"
 #include "helper.h"
+#include "verify_fftw.h"
 
 static const char *const usage[] = {
     "bin/host [options]",
@@ -16,7 +17,8 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 2, iter = 1, inv = 0, sp = 0, use_bram;
+  int N = 64, dim = 2, iter = 1, inv = 0, sp = 0, use_bram = 0;
+
   char *path = "fft2d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -66,6 +68,14 @@ int main(int argc, const char **argv) {
       timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
     }
 
+#ifdef USE_FFTW
+    if(!verify_sp_fft2d_fftw(out, inp, N, inv)){
+      printf("2d FFT Verification Passed \n");
+    }
+    else{
+      printf("2d FFT Verification Failed \n");
+    }
+#endif
     free(inp);
     free(out);
   }
