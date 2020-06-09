@@ -10,7 +10,8 @@ set(examples fft3d fft2d fft1d)
 foreach(example ${examples})
 
   add_executable(${example} ${example}.c
-                  common/helper.c)  
+                  common/helper.c
+                  common/verify_fftw.c)
 
   target_compile_options(${example}
       PRIVATE -Wall -Werror)
@@ -27,20 +28,11 @@ foreach(example ${examples})
   target_link_libraries(${example}
       PRIVATE ${IntelFPGAOpenCL_LIBRARIES} fftfpga argparse m)
 
+if(FFTW_FOUND)
+  target_compile_definitions(${example} PRIVATE USE_FFTW)
+  target_link_libraries(${example} PUBLIC fftw3 fftw3f)
+else()
+  message(WARNING, "FFTW library not found. Cannot perform verification")
+endif()
+
 endforeach()
-
-
-# GTest Setup
-#if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-#  option(PACKAGE_TESTS "Build the tests" ON)
-#endif()
-
-
-#if(PACKAGE_TESTS)
-#    enable_testing()
-#    include(GoogleTest)
-#    add_subdirectory(tests)
-#endif()
-
-#${CMAKE_SOURCE_DIR}/extern/argparse/argparse.c
-# "${CMAKE_SOURCE_DIR}/extern/argparse"

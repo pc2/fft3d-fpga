@@ -1,0 +1,8 @@
+// Author: Arjun Ramaswami
+
+#ifndef FFT3D_FFTW_H
+#define FFT3D_FFTW_H
+
+int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse);
+
+#endif // FFT3D_FFTW_H

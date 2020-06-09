@@ -9,6 +9,7 @@
 
 #include "argparse.h"
 #include "helper.h"
+#include "verify_fftw.h"
 
 static const char *const usage[] = {
     "bin/host [options]",
@@ -16,7 +17,7 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram;
+  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram =0;
   char *path = "fft3d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -59,11 +60,23 @@ int main(int argc, const char **argv) {
     fftf_create_data(inp, N * N * N);
 
     if(use_bram == 1){
+      printf("calling bram\n");
       timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv);
     }
     else{
+      printf("calling ddr\n");
       timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
     }
+
+#ifdef USE_FFTW
+    if(!verify_sp_fft3d_fftw(out, inp, N, inv)){
+      printf("3d FFT Verification Passed \n");
+    }
+    else{
+      printf("3d FFT Verification Failed \n");
+    }
+#endif
+    
     /*
     for(size_t i = 0; i < (N*N*N); i++){
       printf("%d - %lf %lf \n", out[i].x, out[i].y);

@@ -5,7 +5,7 @@
 
 extern "C" {
   #include "CL/opencl.h"
-  #include "fftfpga.h"
+  #include "fftfpga/fftfpga.h"
   #include "helper.h"
 }
 
