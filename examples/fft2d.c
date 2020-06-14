@@ -71,7 +71,7 @@ int main(int argc, const char **argv) {
       }
 
   #ifdef USE_FFTW
-      if(!verify_sp_fft2d_fftw(out, inp, N, inv)){
+      if(verify_sp_fft2d_fftw(out, inp, N, inv)){
         printf("2d FFT Verification Passed \n");
       }
       else{
