@@ -11,7 +11,7 @@
  * \param fftw_data: pointer to fft3d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT3d
  * \param inverse: 1 if inverse
- * \return 1 if verification passed, 0 failed
+ * \return 0 if verification passed, 1 failed
  */
 int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
 
@@ -70,10 +70,10 @@ int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
   printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 
   if(db > 120){
-    return 0;
+    return 1;
   }
   else{
-    return 1;
+    return 0;
   }
 
 }
@@ -84,7 +84,7 @@ int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
  * \param fftw_data: pointer to fft2d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT2d
  * \param inverse: 1 if inverse
- * \return 1 if verification passed, 0 failed
+ * \return 0 if verification passed, 1 failed
  */
 int verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
 
@@ -143,10 +143,10 @@ int verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
   printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 
   if(db > 120){
-    return 0;
+    return 1;
   }
   else{
-    return 1;
+    return 0;
   }
 
 }
