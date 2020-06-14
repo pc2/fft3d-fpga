@@ -15,7 +15,6 @@ static const char *const usage[] = {
     NULL,
 };
 
-
 int main(int argc, const char **argv) {
   int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, use_bram;
   char *path = "fft1d_emulate.aocx";
@@ -77,7 +76,7 @@ int main(int argc, const char **argv) {
       return 1;
     }
 
-    display_measures(timing, N, dim, iter, inv, sp);
+    display_measures(timing.pcie_read_t, timing.pcie_write_t, timing.exec_t, N, dim, iter, inv, sp);
   }
   else{
     fprintf(stderr, "Invalid timing measurement. Function returned prematurely\n");

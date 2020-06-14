@@ -23,6 +23,7 @@ int main(int argc, const char **argv) {
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
   int use_svm = 0, use_emulator = 0;
+  double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -61,21 +62,33 @@ int main(int argc, const char **argv) {
 
     fftf_create_data(inp, N * N);
 
-    if(use_bram == 1){
-      timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv);
-    }
-    else{
-      timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
+    for(size_t i = 0; i < iter; i++){
+      if(use_bram == 1){
+        timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv);
+      }
+      else{
+        timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
+      }
+
+  #ifdef USE_FFTW
+      if(!verify_sp_fft2d_fftw(out, inp, N, inv)){
+        printf("2d FFT Verification Passed \n");
+      }
+      else{
+        printf("2d FFT Verification Failed \n");
+      }
+  #endif
+
+      if(timing.valid != 0){
+        avg_rd += timing.pcie_read_t;
+        avg_wr += timing.pcie_write_t;
+        avg_exec += timing.exec_t;
+      }
+      else{
+        break;
+      } 
     }
 
-#ifdef USE_FFTW
-    if(!verify_sp_fft2d_fftw(out, inp, N, inv)){
-      printf("2d FFT Verification Passed \n");
-    }
-    else{
-      printf("2d FFT Verification Failed \n");
-    }
-#endif
     free(inp);
     free(out);
   }
@@ -85,12 +98,12 @@ int main(int argc, const char **argv) {
 
   if(timing.valid == 1){
 
-    if(timing.exec_t == 0.0){
+    if(avg_exec == 0.0){
       fprintf(stderr, "Invalid measurement. Execute kernel did not run\n");
       return 1;
     }
 
-    display_measures(timing, N, dim, iter, inv, sp);
+    display_measures(avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
   }
   else{
     fprintf(stderr, "Invalid timing measurement. Function returned prematurely\n");
