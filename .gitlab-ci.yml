@@ -10,23 +10,25 @@ build-all:
   script:
     - rm -rf build
     - mkdir -p build && cd build
-    - cmake ..
+    - cmake -DLOG_FFT_SIZE=6 ..
     - make
     - make fft1d_emu
     - make fft2d_ddr_emu
     - make fft2d_bram_emu
-    - make fft3d_ddr_emu
+    - make fft3d_ddr_triv_emu
     - make fft3d_bram_emu
-    - chmod +x bin/host bin/test
+    - chmod +x bin/fft3d bin/fft2d bin/fft1d bin/test
   artifacts:
     paths:
-      - build/bin/64_fft1d_emulate.aocx
-      - build/bin/64_fft2d_bram_emulate.aocx
-      - build/bin/64_fft2d_ddr_emulate.aocx
-      - build/bin/64_fft3d_bram_emulate.aocx
-      - build/bin/64_fft3d_ddr_emulate.aocx
+      - build/bin/emu_64_fft1d/fft1d.aocx
+      - build/bin/emu_64_fft2d_ddr/fft2d_bram.aocx
+      - build/bin/emu_64_fft2d_bram/fft2d_ddr.aocx
+      - build/bin/emu_64_fft3d_ddr_triv/fft3d_bram.aocx
+      - build/bin/emu_64_fft3d_bram/fft3d_ddr_triv.aocx
       - build/bin/test
-      - build/bin/host
+      - build/bin/fft3d
+      - build/bin/fft2d
+      - build/bin/fft1d
 
 test-all:
   stage: test
