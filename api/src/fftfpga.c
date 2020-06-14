@@ -76,6 +76,11 @@ void* fftfpgaf_complex_malloc(size_t sz, int svm){
  * @param use_svm      : 1 if true 0 otherwise
  * @param use_emulator : 1 if true 0 otherwise
  * @return 0 if successful 
+          -1 Path to binary missing
+          -2 Unable to find platform passed as argument
+          -3 Unable to find devices for given OpenCL platform
+          -4 Failed to create program, file not found in path
+
  */
 int fpga_initialize(const char *platform_name, const char *path, int use_svm, int use_emulator){
   cl_int status = 0;
@@ -85,23 +90,23 @@ int fpga_initialize(const char *platform_name, const char *path, int use_svm, in
 #endif
 
   if(path == NULL || strlen(path) == 0){
-    fprintf(stderr, "Path to binary missing\n");
-    return 1;
+    //fprintf(stderr, "Path to binary missing\n");
+    return -1;
   }
 
   // Check if this has to be sent as a pointer or value
   // Get the OpenCL platform.
   platform = findPlatform(platform_name);
   if(platform == NULL){
-    fprintf(stderr,"ERROR: Unable to find %s OpenCL platform\n", platform_name);
-    return 1;
+    //fprintf(stderr,"ERROR: Unable to find %s OpenCL platform\n", platform_name);
+    return -2;
   }
   // Query the available OpenCL devices.
   cl_uint num_devices;
   devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
   if(devices == NULL){
-    fprintf(stderr, "ERROR: Unable to find devices for %s OpenCL platform\n", platform_name);
-    return 1;
+    //fprintf(stderr, "ERROR: Unable to find devices for %s OpenCL platform\n", platform_name);
+    return -3;
   }
 
   // use the first device.
@@ -119,7 +124,7 @@ int fpga_initialize(const char *platform_name, const char *path, int use_svm, in
   if(program == NULL) {
     fprintf(stderr, "Failed to create program\n");
     fpga_final();
-    return 1;
+    return -4;
   }
 
 #ifdef VERBOSE
