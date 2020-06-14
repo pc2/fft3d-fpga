@@ -11,6 +11,6 @@ int fft_create_data(double2 *inp, int N);
 
 void print_config(int N, int dim, int iter, int inv, int sp, int use_bram);
 
-void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp);
+void display_measures(double pcie_rd, double pcie_wr, double exec, int N, int dim, int iter, int inv, int sp);
 
 #endif // HELPER_H

@@ -97,9 +97,12 @@ void print_config(int N, int dim, int iter, int inv, int sp, int use_bram){
  * \param  inv: 1 if backward transform
  * \param  single precision floating point transformation
  */
-void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp){
+void display_measures(double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int inv, int sp){
 
-  double exec = timing.exec_t / iter;
+  double pcie_read = pcie_rd / iter;
+  double pcie_write = pcie_wr / iter;
+  double exec = exec_t / iter;
+
   double gpoints_per_sec = (pow(N, dim)  / (exec * 1e-3)) * 1e-9;
   double gBytes_per_sec = 0.0;
 
@@ -118,8 +121,8 @@ void display_measures(fpga_t timing, int N, int dim, int iter, int inv, int sp){
   printf("Points             = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
   printf("Precision          = %s\n",  sp==1 ? "Single": "Double");
   printf("Direction          = %s\n", inv ? "Backward":"Forward");
-  printf("PCIe Write         = %.2lfms\n", timing.pcie_write_t);
+  printf("PCIe Write         = %.2lfms\n", pcie_write);
   printf("Kernel Execution   = %.2lfms\n", exec);
-  printf("PCIe Write         = %.2lfms\n", timing.pcie_read_t);
+  printf("PCIe Write         = %.2lfms\n", pcie_read);
   printf("Throughput         = %.2lfGFLOPS/s | %.2lf GB/s\n", gflops, gBytes_per_sec);
 }
