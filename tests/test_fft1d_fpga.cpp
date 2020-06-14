@@ -105,8 +105,8 @@ TEST(fft1dFPGATest, CorrectnessSp){
   fftwf_destroy_plan(plan);
   free(temp);
   fpga_final();
-#endif
 
   free(inp);
   free(out);
+#endif
 }
