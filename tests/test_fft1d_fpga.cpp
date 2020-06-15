@@ -52,7 +52,7 @@ TEST(fft1dFPGATest, CorrectnessSp){
   fftf_create_data(inp, N);
 
   int isInit= fpga_initialize("Intel(R) FPGA", "emu_64_fft1d/fft1d.aocx", 0, 1);
-  ASSERT_EQ(isInit, 1);
+  ASSERT_EQ(isInit, 0);
 
   fpga_t fft_time = fftfpgaf_c2c_1d(64, inp, out, 0, 1);
 
