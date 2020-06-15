@@ -10,10 +10,7 @@ extern "C" {
 class OpenCLUtilsTest : public :: testing :: Test {
 
   void SetUp(){}
-  void TearDown() override {
-    queue_cleanup();
-    fpga_final();
-  }
+  void TearDown(){}
 
   protected:
     static cl_platform_id pl_id;
@@ -66,7 +63,7 @@ TEST_F(OpenCLUtilsTest, FindValidDevice){
  */
 TEST_F(OpenCLUtilsTest, CreateValidProgram){
   cl_int status = 0;
-  const char *path = "64pt_fft1d_emulate.aocx";
+  const char *path = "emu_64_fft3d_bram/fft3d_bram.aocx";
 
   // bad context
   cl_context bad_context;
@@ -86,5 +83,6 @@ TEST_F(OpenCLUtilsTest, CreateValidProgram){
   EXPECT_EQ(getProgramWithBinary(context, &device, 1, NULL), nullptr);
 
   // right path
-  //EXPECT_NE(getProgramWithBinary(context, &device, 1, path), NULL);
+  EXPECT_NE(getProgramWithBinary(context, &device, 1, path), nullptr);
+  //fpga_final();
 }

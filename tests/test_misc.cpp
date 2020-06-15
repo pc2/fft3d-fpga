@@ -1,11 +1,9 @@
 // Author: Arjun Ramaswami
 
 #include "gtest/gtest.h"  // finds this because gtest is linked
-#include <stdlib.h>
 
 extern "C" {
   #include "CL/opencl.h"
-  #include "fftfpga/fftfpga.h"
   #include "helper.h"
 }
 

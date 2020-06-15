@@ -10,15 +10,17 @@ add_executable(test_fftfpga
       test_fft1d_fpga.cpp
       test_fft2d_fpga.cpp
       test_fft3d_fpga.cpp
+      test_opencl_utils.cpp
+      test_misc.cpp
     ${examplesfftfpga_SOURCE_DIR}/common/helper.c
     ${examplesfftfpga_SOURCE_DIR}/common/verify_fftw.c
-  #${CMAKE_CURRENT_SOURCE_DIR}/test_opencl_utils.cpp
 )
 
 target_include_directories(test_fftfpga
   PUBLIC ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR}
         ${IntelFPGAOpenCL_INCLUDE_DIRS}
         ${examplesfftfpga_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/api/src
         ${CMAKE_SOURCE_DIR}/extern/argparse
 )
 
