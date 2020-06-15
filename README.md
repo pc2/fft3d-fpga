@@ -3,7 +3,7 @@
 FFTFPGA is an OpenCL based library for Fast Fourier Transformations for FPGAs.
 This repository provides OpenCL host code in the form of FFTW like APIs, which can be used to offload existing FFT routines to FPGAs with minimal effort. It also provides OpenCL kernels that can be synthesized to bitstreams, which the APIs can utilize.
 
-FFTFPGA has been tested on Intel FPGAs namely, Stratix 10 GX 2800. This version of FFTFPGA supports the following features:
+## Features
 
 - 1D, 2D and 3D Transforms
 - Input sizes of powers of 2
@@ -11,11 +11,23 @@ FFTFPGA has been tested on Intel FPGAs namely, Stratix 10 GX 2800. This version 
 - C2C: Complex input to complex output
 - Out-of-place transforms
 
-## Build
+## Supported FPGAs
+
+The library has been tested on the following FPGAs:
+
+- Intel Stratix 10 GX 2800
+- Intel Arria 10
+
+## Who is using FFTFPGA?
+
+- [CP2K](https://github.com/cp2k/cp2k):  the quantum chemistry software package has an interface to offload 3d FFTs to Intel FPGAs that uses the OpenCL kernel designs of FFTFPGA.
+
+## Getting Started
+
 
 ### Dependencies
 
-- CMake >= 3.10
+- [CMake](https://cmake.org/) >= 3.10
 - C Compiler with C11 support
 - Intel OpenCL FPGA SDK
 
@@ -26,62 +38,100 @@ Additional submodules used:
 - [findFFTW](https://github.com/egpbos/findFFTW.git) for CMake FFTW find package
 - [gtest](https://github.com/google/googletest.git) for unit tests
 
-Build the host application by the following:
+### Structure
+
+The repository consists of the following:
+
+- `api`     : host code to setup and execute FPGA bitstreams. Compiled to static library that can be linked to your application
+- `kernels` : OpenCL kernel code for 1d, 2d and 3d FFT
+- `examples`: Sample code that makes use of the api
+- `extern` : external packages as submodules required to run the project
+- `cmake`  : cmake modules used by the build system
+- `scripts`: convenience slurm scripts
+- `docs`   : describes models regarding performance and resource utilization
+- `data`   : evaluation results and measurements
+
+### Setup
+
+FFTFPGA has a CMake build script that can be used to build the project. This consists of two steps:
+
+1. Building the API that can be linked to your application
+2. Building OpenCL Kernel Designs that are used by the API
+
+#### API
 
 ```bash
-mkdir build && cd build
+mkdir build && cd build  # Directory to store build outputs
 cmake ..
 make
 ```
 
-Building OpenCL kernels within the build directory:
+This generates the following:
 
-- For emulation
+- `fftfpga` static library to link such as `-lfftfpga`
+- `fftfpga/fftfpga.h` header file
+
+The sample programs given in the `example` directory are also compiled to binaries of their respective names, which makes use of the files given previously.
+
+#### OpenCL Kernel Designs
+
+FFTFPGA provides OpenCL designs that can be compiled for different options:
+
+- Emulation
 
 ```bash
+make <kernel_name>_emu
 make fft1d_emulate
-make fft2d_emulate
-make fft3d_emulate
 ```
 
-- For synthesis
+- Report Generation
 
 ```bash
+make <kernel_name>_rep
+make fft1d_rep
+```
+
+- Synthesis
+
+```bash
+make <kernel_name>_syn
 make fft1d_syn
-make fft2d_syn
-make fft3d_syn
 ```
 
-## Execution
+Paths to these bitstreams should be provided as parameters to certain API calls to execute the design.
 
-Execute:
+### Examples
+
+#### Additional Dependency
+
+- FFTW3
+
+#### Execution
 
 ```bash
-./fft_fpga -n 64 -d 3 -s -p 64pt_fft1d_syn.aocx
+./fft3d -n 64 -m -s -p emu_64_fft3d_bram/fft3d_bram.aocx
 ```
 
-Input Parameters
+Prepend the command with `CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1`for emulation.
+
+#### Runtime Input Parameters
 
 ```bash
     -h, --help        show this help message and exit
 
 Basic Options
     -n, --n=<int>     FFT Points
-    -d, --dim=<int>   Dimensions
     -s, --sp          Single Precision
     -i, --iter=<int>  Iterations
     -b, --back        Backward FFT
     -v, --svm         Use SVM
-    -p, --path=<str>  Path to bitstream
+    -m, --bram        Use BRAM
+    -p, --path=<str>  Path to bitstreamm
 ```
 
-- Emulation
+#### Output
 
-```bash
-env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./fft_fpga
-```
-
-## Output
+The examples measure and output relevant performance metrics that are shown below:
 
 ```bash
 ------------------------------------------
@@ -96,7 +146,7 @@ Iterations         = 1
 --------------------------------------------
 
         Initializing FPGA ...
-        Getting program binary from path 64pt_fft1d_emulate.aocx ...
+        Getting program binary from path emu_64_fft3d_bram/fft3d_bram.aocx ...
         Building program ...
         FFT kernel initialization is complete.
         Cleaning up FPGA resources ...
@@ -112,3 +162,20 @@ Kernel Execution   = 0.48ms
 PCIe Write         = 0.02ms
 Throughput         = 0.00GFLOPS/s | 0.00 GB/s
 ```
+
+## Publications
+
+FFTFPGA has been cited in the following publications:
+
+1. CP2K: An electronic structure and molecular dynamics software package - Quickstep: Efficient and accurate electronic structure calculations: https://doi.org/10.1063/5.0007045
+
+
+## Contact
+
+- [Arjun Ramaswami](https://github.com/arjunramaswami)
+- [Tobias Kenter](https://www.uni-paderborn.de/person/3145/)
+- [Christian Plessl](https://github.com/plessl)
+
+## Acknowledgements
+
+- [Marius Meyer](https://pc2.uni-paderborn.de/about-pc2/staff-board/staff/person/?tx_upbperson_personsite%5BpersonId%5D=40778&tx_upbperson_personsite%5Bcontroller%5D=Person&cHash=867dec7cae43afd76c85cd503d8da47b) for code reviews and testing
