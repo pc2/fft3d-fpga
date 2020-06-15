@@ -23,8 +23,8 @@ build-all:
       - build/bin/emu_64_fft1d/fft1d.aocx
       - build/bin/emu_64_fft2d_ddr/fft2d_bram.aocx
       - build/bin/emu_64_fft2d_bram/fft2d_ddr.aocx
-      - build/bin/emu_64_fft3d_ddr_triv/fft3d_bram.aocx
-      - build/bin/emu_64_fft3d_bram/fft3d_ddr_triv.aocx
+      - build/bin/emu_64_fft3d_ddr_triv/fft3d_ddr_triv.aocx
+      - build/bin/emu_64_fft3d_bram/fft3d_bram.aocx
       - build/bin/test_fftfpga
       - build/bin/fft3d
       - build/bin/fft2d
