@@ -17,7 +17,7 @@ build-all:
     - make fft2d_bram_emu
     - make fft3d_ddr_triv_emu
     - make fft3d_bram_emu
-    - chmod +x bin/fft3d bin/fft2d bin/fft1d bin/test
+    - chmod +x bin/fft3d bin/fft2d bin/fft1d bin/test_fftfpga
   artifacts:
     paths:
       - build/bin/emu_64_fft1d/fft1d.aocx
@@ -25,7 +25,7 @@ build-all:
       - build/bin/emu_64_fft2d_bram/fft2d_ddr.aocx
       - build/bin/emu_64_fft3d_ddr_triv/fft3d_bram.aocx
       - build/bin/emu_64_fft3d_bram/fft3d_ddr_triv.aocx
-      - build/bin/test
+      - build/bin/test_fftfpga
       - build/bin/fft3d
       - build/bin/fft2d
       - build/bin/fft1d
@@ -34,6 +34,6 @@ test-all:
   stage: test
   script:
     - cd build/bin/
-    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test
+    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test_fftfpga
   dependencies:
     - build-all
