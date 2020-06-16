@@ -1,6 +1,7 @@
 // Author: Arjun Ramaswami
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 #include "fftfpga/fftfpga.h"
 
 #ifdef USE_FFTW
@@ -11,9 +12,9 @@
  * \param fftw_data: pointer to fft3d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT3d
  * \param inverse: 1 if inverse
- * \return 0 if verification passed, 1 failed
+ * \return true if verification passed
  */
-int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
+bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
 
   // Copy inp data to verify using FFTW
   // requires allocating data specifically for FFTW computation
@@ -70,10 +71,10 @@ int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
   printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 
   if(db > 120){
-    return 1;
+    return true;
   }
   else{
-    return 0;
+    return false;
   }
 
 }
@@ -84,9 +85,9 @@ int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
  * \param fftw_data: pointer to fft2d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT2d
  * \param inverse: 1 if inverse
- * \return 0 if verification passed, 1 failed
+ * \return true if verification passed
  */
-int verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
+bool verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
 
   // Copy inp data to verify using FFTW
   // requires allocating data specifically for FFTW computation
@@ -143,10 +144,10 @@ int verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
   printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
 
   if(db > 120){
-    return 1;
+    return true;
   }
   else{
-    return 0;
+    return false;
   }
 
 }
