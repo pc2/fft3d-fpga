@@ -3,11 +3,12 @@
 #ifndef HELPER_H
 #define HELPER_H
 
+#include <stdbool.h>
 #include "fftfpga/fftfpga.h"
 
-int fftf_create_data(float2 *inp, int N);
+bool fftf_create_data(float2 *inp, int N);
 
-int fft_create_data(double2 *inp, int N);
+bool fft_create_data(double2 *inp, int N);
 
 void print_config(int N, int dim, int iter, int inv, int sp, int use_bram);
 

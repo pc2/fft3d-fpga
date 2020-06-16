@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <math.h>
 #include "helper.h"
 
@@ -9,12 +10,12 @@
  * \brief  create random single precision complex floating point values  
  * \param  inp : pointer to float2 data of size N 
  * \param  N   : number of points in the array
- * \return 0 if successful 1 if not
+ * \return true if successful
  */
-int fftf_create_data(float2 *inp, int N){
+bool fftf_create_data(float2 *inp, int N){
 
   if(inp == NULL || N <= 0){
-    return 1;
+    return false;
   }
 
   for(int i = 0; i < N; i++){
@@ -22,19 +23,19 @@ int fftf_create_data(float2 *inp, int N){
     inp[i].y = (float)((float)rand() / (float)RAND_MAX);
   }
 
-  return 0;
+  return true;
 }
 
 /**
  * \brief  create random double precision complex floating point values  
  * \param  inp : pointer to double2 data of size N 
  * \param  N   : number of points in the array
- * \return 0 if successful 1 if not
+ * \return true if successful
  */
-int fft_create_data(double2 *inp, int N){
+bool fft_create_data(double2 *inp, int N){
 
   if(inp == NULL || N <= 0 || N > 1024){
-    return 1;
+    return false;
   }
 
   for(int i = 0; i < N; i++){
@@ -42,7 +43,7 @@ int fft_create_data(double2 *inp, int N){
     inp[i].y = (double)((double)rand() / (double)RAND_MAX);
   }
 
-  return 0;
+  return true;
 }
 
 /**
