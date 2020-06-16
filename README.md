@@ -1,6 +1,7 @@
 # FFTFPGA
 
 [![GitHub license](https://img.shields.io/github/license/pc2/fft3d-fpga)](https://github.com/pc2/fft3d-fpga/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/v/release/pc2/fft3d-fpga)](https://github.com/pc2/fft3d-fpga/releases/)
 
 FFTFPGA is an OpenCL based library for Fast Fourier Transformations for FPGAs.
 This repository provides OpenCL host code in the form of FFTW like APIs, which can be used to offload existing FFT routines to FPGAs with minimal effort. It also provides OpenCL kernels that can be synthesized to bitstreams, which the APIs can utilize.
