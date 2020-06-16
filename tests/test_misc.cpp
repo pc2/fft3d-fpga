@@ -1,6 +1,7 @@
 // Author: Arjun Ramaswami
 
 #include "gtest/gtest.h"  // finds this because gtest is linked
+#include <stdbool.h>
 
 extern "C" {
   #include "CL/opencl.h"
@@ -16,10 +17,10 @@ TEST(HelperTest, CreateValidRandomSpData){
   float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
 
   // sz 0
-  EXPECT_EQ(fftf_create_data(0, 1), 1);
+  EXPECT_FALSE(fftf_create_data(0, 1));
 
   // good input
-  EXPECT_EQ(fftf_create_data(inp, N), 0);
+  EXPECT_TRUE(fftf_create_data(inp, N));
 
   free(inp);
 }
@@ -33,10 +34,10 @@ TEST(HelperTest, CreateValidRandomDpData){
   double2 *inp = (double2*)fftfpga_complex_malloc(sz, 0);
 
   // sz 0
-  EXPECT_EQ(fft_create_data(0, 1), 1);
+  EXPECT_FALSE(fft_create_data(0, 1));
 
   // good input
-  EXPECT_EQ(fft_create_data(inp, N), 0);
+  EXPECT_TRUE(fft_create_data(inp, N));
 
   free(inp);
 }
