@@ -1,8 +1,9 @@
 //  Author: Arjun Ramaswami
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> // EXIT_FAILURE
 #include <math.h>
+#include <stdbool.h>
 
 #include "CL/opencl.h"
 #include "fftfpga/fftfpga.h"
@@ -18,12 +19,12 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv) {
   int N = 64, dim = 2, iter = 1, inv = 0, sp = 0, use_bram = 0;
-
   char *path = "fft2d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
   int use_svm = 0, use_emulator = 0;
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
+  bool status = true;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -46,69 +47,68 @@ int main(int argc, const char **argv) {
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp, use_bram);
 
-  if(fpga_initialize(platform, path, use_svm, use_emulator)){
-    return 1;
+  int isInit = fpga_initialize(platform, path, use_svm, use_emulator);
+  if(isInit != 0){
+    return EXIT_FAILURE;
   }
 
   if(sp == 0){
-    fprintf(stderr, "Not implemented. Work in Progress\n");
-    return 0;
+    printf("Not implemented. Work in Progress\n");
+    return EXIT_SUCCESS;
   } 
   else{
 
-    size_t inp_sz = sizeof(float2) * N * N;
-    float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-    float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-
-    fftf_create_data(inp, N * N);
-
     for(size_t i = 0; i < iter; i++){
+      size_t inp_sz = sizeof(float2) * N * N;
+      float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+      float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+
+      status = fftf_create_data(inp, N * N);
+      if(!status){
+        free(inp);
+        free(out);
+        return EXIT_FAILURE;
+      }
+
       if(use_bram == 1){
+        // use bram for 2d Transpose
         timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv);
       }
       else{
+        // use global memory for 2d Transpose
         timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
       }
 
   #ifdef USE_FFTW
-      if(verify_sp_fft2d_fftw(out, inp, N, inv)){
-        printf("2d FFT Verification Passed \n");
-      }
-      else{
-        printf("2d FFT Verification Failed \n");
+      if(!verify_sp_fft2d_fftw(out, inp, N, inv)){
+        fprintf(stderr, "2d FFT Verification Failed \n");
+        free(inp);
+        free(out);
+        return EXIT_FAILURE;
       }
   #endif
-
-      if(timing.valid != 0){
-        avg_rd += timing.pcie_read_t;
-        avg_wr += timing.pcie_write_t;
-        avg_exec += timing.exec_t;
+      if(timing.valid == 0){
+        fprintf(stderr, "Invalid execution, timing found to be 0");
+        free(inp);
+        free(out);
+        return EXIT_FAILURE;
       }
-      else{
-        break;
-      } 
-    }
 
-    free(inp);
-    free(out);
-  }
+      avg_rd += timing.pcie_read_t;
+      avg_wr += timing.pcie_write_t;
+      avg_exec += timing.exec_t;
 
-  // destroy data
+      // destroy FFT input and output
+      free(inp);
+      free(out);
+    }  // iter
+  } // sp condition
+
+  // destroy fpga state
   fpga_final();
 
-  if(timing.valid == 1){
+  // display performance measures
+  display_measures(avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
 
-    if(avg_exec == 0.0){
-      fprintf(stderr, "Invalid measurement. Execute kernel did not run\n");
-      return 1;
-    }
-
-    display_measures(avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
-  }
-  else{
-    fprintf(stderr, "Invalid timing measurement. Function returned prematurely\n");
-    return 1;
-  }
-
-  return 0;
+  return EXIT_SUCCESS;
 }

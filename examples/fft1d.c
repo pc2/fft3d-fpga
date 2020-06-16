@@ -1,8 +1,9 @@
 //  Author: Arjun Ramaswami
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> // EXIT_FAILURE
 #include <math.h>
+#include <stdbool.h>
 
 #include "CL/opencl.h"
 #include "fftfpga/fftfpga.h"
@@ -21,6 +22,7 @@ int main(int argc, const char **argv) {
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
   int use_svm = 0, use_emulator = 0;
+  bool status = true;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -43,14 +45,15 @@ int main(int argc, const char **argv) {
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp, use_bram);
 
-  if(fpga_initialize(platform, path, use_svm, use_emulator)){
-    return 1;
+  int isInit = fpga_initialize(platform, path, use_svm, use_emulator);
+  if(isInit != 0){
+    return EXIT_FAILURE;
   }
 
   // Select based on dimensions and precisions different functions
   if(sp == 0){
-    fprintf(stderr, "Not implemented. Work in Progress\n");
-    return 0;
+    printf("Not implemented. Work in Progress\n");
+    return EXIT_SUCCESS;
   } 
   else{
     size_t inp_sz = sizeof(float2) * N * iter;
@@ -58,7 +61,12 @@ int main(int argc, const char **argv) {
     float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
     float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
 
-    fftf_create_data(inp, N * iter);
+    status = fftf_create_data(inp, N * iter);
+    if(!status){
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
 
     timing = fftfpgaf_c2c_1d(N, inp, out, inv, iter);
 
@@ -73,15 +81,15 @@ int main(int argc, const char **argv) {
 
     if(timing.exec_t == 0.0){
       fprintf(stderr, "Invalid measurement. Execute kernel did not run\n");
-      return 1;
+      return EXIT_FAILURE;
     }
 
     display_measures(timing.pcie_read_t, timing.pcie_write_t, timing.exec_t, N, dim, iter, inv, sp);
   }
   else{
     fprintf(stderr, "Invalid timing measurement. Function returned prematurely\n");
-    return 1;
+    return EXIT_FAILURE;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 }
