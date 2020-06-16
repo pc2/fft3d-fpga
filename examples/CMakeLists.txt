@@ -16,10 +16,6 @@ foreach(example ${examples})
   target_compile_options(${example}
       PRIVATE -Wall -Werror)
       
-  if(USE_DEBUG)
-    target_compile_definitions(${example} PRIVATE DEBUG)
-  endif()
-
   target_include_directories(${example}
       PRIVATE  ${IntelFPGAOpenCL_INCLUDE_DIRS}
                 "${CMAKE_SOURCE_DIR}/extern/argparse"

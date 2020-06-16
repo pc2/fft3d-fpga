@@ -114,6 +114,10 @@ Paths to these bitstreams should be provided as parameters to certain API calls 
 
 Prepend the command with `CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1`for emulation.
 
+#### Compile Definitions
+
+- `LOG_SIZE`: set the log of the length of the matrix. Example: `-DLOG_SIZE=6`.
+
 #### Runtime Input Parameters
 
 ```bash
@@ -159,9 +163,13 @@ Precision          = Single
 Direction          = Forward
 PCIe Write         = 0.03ms
 Kernel Execution   = 0.48ms
-PCIe Write         = 0.02ms
+PCIe Read          = 0.02ms
 Throughput         = 0.00GFLOPS/s | 0.00 GB/s
 ```
+
+- `PCIe Write` and `PCIe Read` the time taken in milliseconds for transfer of data from host to global memory through PCIe bus.
+
+- `Kernel Execution` represents the time taken in milliseconds for the execution of the OpenCL implementation that includes the global memory accesses.
 
 ## Publications
 
@@ -169,13 +177,13 @@ FFTFPGA has been cited in the following publications:
 
 1. CP2K: An electronic structure and molecular dynamics software package - Quickstep: Efficient and accurate electronic structure calculations: https://doi.org/10.1063/5.0007045
 
-
 ## Contact
 
 - [Arjun Ramaswami](https://github.com/arjunramaswami)
 - [Tobias Kenter](https://www.uni-paderborn.de/person/3145/)
+- [Thomas D. Kühne](https://chemie.uni-paderborn.de/arbeitskreise/theoretische-chemie/kuehne/)
 - [Christian Plessl](https://github.com/plessl)
 
 ## Acknowledgements
 
-- [Marius Meyer](https://pc2.uni-paderborn.de/about-pc2/staff-board/staff/person/?tx_upbperson_personsite%5BpersonId%5D=40778&tx_upbperson_personsite%5Bcontroller%5D=Person&cHash=867dec7cae43afd76c85cd503d8da47b) for code reviews and testing
+- [Marius Meyer](https://pc2.uni-paderborn.de/about-pc2/staff-board/staff/person/?tx_upbperson_personsite%5BpersonId%5D=40778&tx_upbperson_personsite%5Bcontroller%5D=Person&cHash=867dec7cae43afd76c85cd503d8da47b) for code reviews, testing and discussions.

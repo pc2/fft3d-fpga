@@ -22,16 +22,6 @@ int fftf_create_data(float2 *inp, int N){
     inp[i].y = (float)((float)rand() / (float)RAND_MAX);
   }
 
-#ifdef DEBUG          
-    FILE *fptr = fopen("input_data.txt", "w"); 
-    for(int i = 0; i < N; i++){
-      if (fptr != NULL){
-        fprintf(fptr, "%d : fft[%d] = (%f, %f) \n", i, i, inp[i].x, inp[i].y);
-      }
-    }
-    fclose(fptr); 
-#endif
-
   return 0;
 }
 
@@ -51,16 +41,6 @@ int fft_create_data(double2 *inp, int N){
     inp[i].x = (double)((double)rand() / (double)RAND_MAX);
     inp[i].y = (double)((double)rand() / (double)RAND_MAX);
   }
-
-#ifdef DEBUG          
-    FILE *fptr = fopen("input_data.txt", "w"); 
-    for(int i = 0; i < N; i++){
-      if (fptr != NULL){
-        fprintf(fptr, "%d : fft[%d] = (%lf, %lf) \n", i, i, inp[i].x, inp[i].y);
-      }
-    }
-    fclose(fptr); 
-#endif
 
   return 0;
 }
@@ -123,6 +103,6 @@ void display_measures(double pcie_rd, double pcie_wr, double exec_t, int N, int 
   printf("Direction          = %s\n", inv ? "Backward":"Forward");
   printf("PCIe Write         = %.2lfms\n", pcie_write);
   printf("Kernel Execution   = %.2lfms\n", exec);
-  printf("PCIe Write         = %.2lfms\n", pcie_read);
+  printf("PCIe Read          = %.2lfms\n", pcie_read);
   printf("Throughput         = %.2lfGFLOPS/s | %.2lf GB/s\n", gflops, gBytes_per_sec);
 }
