@@ -179,6 +179,8 @@ FFTFPGA has been cited in the following publications:
 
 1. CP2K: An electronic structure and molecular dynamics software package - Quickstep: Efficient and accurate electronic structure calculations: https://doi.org/10.1063/5.0007045
 
+2. Efficient Ab-Initio Molecular Dynamic Simulations by Offloading Fast Fourier Transformations to FPGAs ([preprint](https://arxiv.org/abs/2006.08435))
+
 ## Contact
 
 - [Arjun Ramaswami](https://github.com/arjunramaswami)
