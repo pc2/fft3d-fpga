@@ -1,5 +1,8 @@
 # FFTFPGA
 
+[![GitHub license](https://img.shields.io/github/license/pc2/fft3d-fpga)](https://github.com/pc2/fft3d-fpga/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/v/release/pc2/fft3d-fpga)](https://github.com/pc2/fft3d-fpga/releases/)
+
 FFTFPGA is an OpenCL based library for Fast Fourier Transformations for FPGAs.
 This repository provides OpenCL host code in the form of FFTW like APIs, which can be used to offload existing FFT routines to FPGAs with minimal effort. It also provides OpenCL kernels that can be synthesized to bitstreams, which the APIs can utilize.
 
@@ -176,6 +179,8 @@ Throughput         = 0.00GFLOPS/s | 0.00 GB/s
 FFTFPGA has been cited in the following publications:
 
 1. CP2K: An electronic structure and molecular dynamics software package - Quickstep: Efficient and accurate electronic structure calculations: https://doi.org/10.1063/5.0007045
+
+2. Efficient Ab-Initio Molecular Dynamic Simulations by Offloading Fast Fourier Transformations to FPGAs ([preprint](https://arxiv.org/abs/2006.08435))
 
 ## Contact
 
