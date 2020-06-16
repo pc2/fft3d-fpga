@@ -54,7 +54,7 @@ bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
     mag_sum += magnitude;
     noise_sum += noise;
 #ifndef NDEBUG
-    printf("%d : fpga - (%e %e) cpu - (%e %e)\n", where, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
+    printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif            
   }
 
@@ -68,12 +68,11 @@ bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
   fftwf_destroy_plan(plan);
 
   // if SNR greater than 120, verification passes
-  printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
-
   if(db > 120){
     return true;
   }
   else{
+    printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, "FAILED");
     return false;
   }
 
@@ -127,7 +126,7 @@ bool verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
     mag_sum += magnitude;
     noise_sum += noise;
 #ifndef NDEBUG
-    printf("%d : fpga - (%e %e) cpu - (%e %e)\n", where, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
+    printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif            
   }
 
@@ -141,12 +140,11 @@ bool verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
   fftwf_destroy_plan(plan);
 
   // if SNR greater than 120, verification passes
-  printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, db > 120 ? "PASSED" : "FAILED");
-
   if(db > 120){
     return true;
   }
   else{
+    printf("\tSignal to noise ratio on output sample: %f --> %s\n\n", db, "FAILED");
     return false;
   }
 
