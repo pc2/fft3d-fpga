@@ -3,9 +3,9 @@ cmake_minimum_required (VERSION 3.1)
 
 project(fft)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+set(CMAKE_C_STANDARD 11)
 
-option(USE_DEBUG "Debug Mode" OFF)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 # Setup submodules that are required
 find_package(Git QUIET)

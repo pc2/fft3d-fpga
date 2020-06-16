@@ -6,6 +6,7 @@
 #include <stdarg.h> // valist, va_start, va_end
 #include <unistd.h> // access in fileExists()
 #include <ctype.h>  // tolower
+#include <stdbool.h> // true, false
 
 #include "CL/opencl.h"
 #include "opencl_utils.h"
@@ -14,8 +15,6 @@
 // function prototype
 static void tolowercase(const char *p, char *q);
 static size_t loadBinary(const char *binary_path, char **buf);
-//void fpga_final();
-//void queue_cleanup();
 
 /**
  * \brief  returns the first platform id with the name passed as argument
@@ -118,13 +117,13 @@ cl_device_id* getDevices(cl_platform_id pid, cl_device_type device_type, cl_uint
 /**
  * \brief  checks if file exists with given filename
  * \param  filename: string
- * \retval 0 if successful and 1 otherwise
+ * \retval true if successful and false otherwise
  */
-static int fileExists(const char* filename){
+static bool fileExists(const char* filename){
   if( access( filename, R_OK ) != -1 ) {
-    return 0;
+    return true;
   } else {
-    return 1;
+    return false;
   }
 }
 
@@ -143,7 +142,7 @@ cl_program getProgramWithBinary(cl_context context, cl_device_id *devices, cl_ui
   if(num_devices == 0)
     return NULL;
 
-  if (fileExists(path)){
+  if (!fileExists(path)){
     fprintf(stderr, "File not found in path %s\n", path);
     return NULL;
   }

@@ -86,11 +86,6 @@ int main(int argc, const char **argv) {
         break;
       }  
     } 
-    /*
-    for(size_t i = 0; i < (N*N*N); i++){
-      printf("%d - %lf %lf \n", out[i].x, out[i].y);
-    }
-    */
     free(inp);
     free(out);
   }

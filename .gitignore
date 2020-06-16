@@ -1,9 +1,11 @@
 build/
 debug/
+test/
 bin/
 fpgabitstream/
 reports/
 vscode/
+scripts/
 
 tags
 *.DS_Store
@@ -11,5 +13,3 @@ slurm*
 *.swp
 *.vscode
 *.log
-
-docs/

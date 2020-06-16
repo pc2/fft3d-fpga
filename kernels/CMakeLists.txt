@@ -23,11 +23,12 @@ configure_file(
 # Get FPGA Board Name from env variable or use default
 # Set it to CMakeCache
 ##
-set(BOARD_NAME $ENV{FPGA_BOARD_NAME})
-if(BOARD_NAME)
-  set(FPGA_BOARD_NAME ${BOARD_NAME} CACHE STRING "Target Board")
-else()
-  set(FPGA_BOARD_NAME p520_hpc_sg280l CACHE STRING "Target Board")
+if(NOT DEFINED FPGA_BOARD_NAME)
+  if(DEFINED $ENV{FPGA_BOARD_NAME})
+    set(FPGA_BOARD_NAME $ENV{FPGA_BOARD_NAME} CACHE STRING "Target Board")
+  else()
+    set(FPGA_BOARD_NAME p520_hpc_sg280l CACHE STRING "Target Board")
+  endif()
 endif()
 
 ## Flags for different target options

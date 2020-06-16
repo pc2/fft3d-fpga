@@ -89,23 +89,23 @@ int fpga_initialize(const char *platform_name, const char *path, int use_svm, in
   printf("\tInitializing FPGA ...\n");
 #endif
 
+  // Path to binary missing
   if(path == NULL || strlen(path) == 0){
-    //fprintf(stderr, "Path to binary missing\n");
     return -1;
   }
 
   // Check if this has to be sent as a pointer or value
   // Get the OpenCL platform.
   platform = findPlatform(platform_name);
+  // Unable to find given OpenCL platform
   if(platform == NULL){
-    //fprintf(stderr,"ERROR: Unable to find %s OpenCL platform\n", platform_name);
     return -2;
   }
   // Query the available OpenCL devices.
   cl_uint num_devices;
   devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
+  // Unable to find device for the OpenCL platform
   if(devices == NULL){
-    //fprintf(stderr, "ERROR: Unable to find devices for %s OpenCL platform\n", platform_name);
     return -3;
   }
 
@@ -295,7 +295,6 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter){
   d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * iter, NULL, &status);
   checkError(status, "Failed to allocate input device buffer\n");
 
-  // TODO: check CL_CHANNEL_2_INTELFPGA
   d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * N * iter, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
@@ -317,7 +316,6 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter){
   kernel2 = clCreateKernel(program, "fft1d", &status);
   checkError(status, "Failed to create fft1d kernel");
   // Set the kernel arguments
-  // from here
   status = clSetKernelArg(kernel1, 0, sizeof(cl_mem), (void *)&d_inData);
   checkError(status, "Failed to set kernel1 arg 0");
   status = clSetKernelArg(kernel2, 0, sizeof(cl_mem), (void *)&d_outData);
@@ -401,7 +399,6 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv){
   queue_setup();
 
   cl_mem d_inData, d_outData, d_tmp;
-  //printf("Launching%s FFT transform for %d iter \n", inv ? " inverse":"", iter);
 
   d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * N * N, NULL, &status);
   checkError(status, "Failed to allocate input device buffer\n");
