@@ -24,6 +24,7 @@ int main(int argc, const char **argv) {
   fpga_t timing = {0.0, 0.0, 0.0, 0};
   int use_svm = 0, use_emulator = 0;
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
+  double temp_timer = 0.0, total_api_time = 0.0;
   bool status = true;
 
   struct argparse_option options[] = {
@@ -72,11 +73,15 @@ int main(int argc, const char **argv) {
 
       if(use_bram == 1){
         // use bram for 2d Transpose
+        temp_timer = getTimeinMilliseconds();
         timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv);
+        total_api_time += getTimeinMilliseconds() - temp_timer;
       }
       else{
         // use global memory for 2d Transpose
+        temp_timer = getTimeinMilliseconds();
         timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
+        total_api_time += getTimeinMilliseconds() - temp_timer;
       }
 
   #ifdef USE_FFTW
@@ -108,7 +113,7 @@ int main(int argc, const char **argv) {
   fpga_final();
 
   // display performance measures
-  display_measures(avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
+  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
 
   return EXIT_SUCCESS;
 }

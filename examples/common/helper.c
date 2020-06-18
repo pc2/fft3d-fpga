@@ -1,10 +1,15 @@
 // Author: Arjun Ramaswami
 
+#define _POSIX_C_SOURCE 199309L  
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
 #include "helper.h"
+#include <time.h>
+#include <sys/time.h>
+#include <math.h>
+#define _USE_MATH_DEFINES
 
 /**
  * \brief  create random single precision complex floating point values  
@@ -71,6 +76,7 @@ void print_config(int N, int dim, int iter, int inv, int sp, int use_bram){
 
 /**
  * \brief  print time taken for fpga and fftw runs to a file
+ * \param  total_api_time: time taken to call iter times the host code
  * \param  timing: kernel execution and pcie transfer timing 
  * \param  N: fft size
  * \param  dim: number of dimensions of size
@@ -78,7 +84,13 @@ void print_config(int N, int dim, int iter, int inv, int sp, int use_bram){
  * \param  inv: 1 if backward transform
  * \param  single precision floating point transformation
  */
-void display_measures(double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int inv, int sp){
+void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int inv, int sp){
+
+  double avg_api_time = 0.0;
+
+  if (total_api_time != 0.0){
+    avg_api_time = total_api_time / iter;
+  }
 
   double pcie_read = pcie_rd / iter;
   double pcie_write = pcie_wr / iter;
@@ -106,4 +118,18 @@ void display_measures(double pcie_rd, double pcie_wr, double exec_t, int N, int 
   printf("Kernel Execution   = %.2lfms\n", exec);
   printf("PCIe Read          = %.2lfms\n", pcie_read);
   printf("Throughput         = %.2lfGFLOPS/s | %.2lf GB/s\n", gflops, gBytes_per_sec);
+  printf("Avg API runtime    = %.2lfms\n", avg_api_time);
+}
+
+/**
+ * \brief  compute walltime in milliseconds
+ * \return time in milliseconds
+ */
+double getTimeinMilliseconds(){
+   struct timespec a;
+   if(clock_gettime(CLOCK_MONOTONIC, &a) != 0){
+     fprintf(stderr, "Error in getting wall clock time \n");
+     exit(EXIT_FAILURE);
+   }
+   return (double)(a.tv_nsec) * 1.0e-6 + (double)(a.tv_sec) * 1.0E3;
 }

@@ -84,7 +84,7 @@ int main(int argc, const char **argv) {
       return EXIT_FAILURE;
     }
 
-    display_measures(timing.pcie_read_t, timing.pcie_write_t, timing.exec_t, N, dim, iter, inv, sp);
+    display_measures(0.0, timing.pcie_read_t, timing.pcie_write_t, timing.exec_t, N, dim, iter, inv, sp);
   }
   else{
     fprintf(stderr, "Invalid timing measurement. Function returned prematurely\n");
