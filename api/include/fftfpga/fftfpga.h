@@ -21,7 +21,7 @@ typedef struct fpga_timing {
 } fpga_t;
 
 // Initialize FPGA
-extern int fpga_initialize(const char *platform_name, const char *path, int use_svm, int use_emulator);
+extern int fpga_initialize(const char *platform_name, const char *path, int use_svm);
 
 // Finalize FPGA
 extern void fpga_final();

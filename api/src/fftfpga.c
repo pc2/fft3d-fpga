@@ -75,7 +75,6 @@ void* fftfpgaf_complex_malloc(size_t sz, int svm){
  * @param platform name: string - name of the OpenCL platform
  * @param path         : string - path to binary
  * @param use_svm      : 1 if true 0 otherwise
- * @param use_emulator : 1 if true 0 otherwise
  * @return 0 if successful 
           -1 Path to binary missing
           -2 Unable to find platform passed as argument
@@ -84,7 +83,7 @@ void* fftfpgaf_complex_malloc(size_t sz, int svm){
           -5 Device does not support required SVM
 
  */
-int fpga_initialize(const char *platform_name, const char *path, int use_svm, int use_emulator){
+int fpga_initialize(const char *platform_name, const char *path, int use_svm){
   cl_int status = 0;
 
 #ifdef VERBOSE
@@ -686,7 +685,7 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int interl
     flagbuf1 = CL_MEM_WRITE_ONLY | CL_CHANNEL_1_INTELFPGA;
     flagbuf2 = CL_MEM_READ_ONLY | CL_CHANNEL_2_INTELFPGA;
   }
-  
+
   // Device memory buffers
   cl_mem d_inData, d_outData;
   d_inData = clCreateBuffer(context, flagbuf1, sizeof(float2) * N * N * N, NULL, &status);

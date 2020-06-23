@@ -46,7 +46,7 @@ TEST(fft2dFPGATest, CorrectnessBRAM){
   const int N = (1 << 6);
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
 
-  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft2d_bram/fft2d_bram.aocx", 0, 1);
+  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft2d_bram/fft2d_bram.aocx", 0);
   EXPECT_EQ(isInit, 0);
 
   size_t sz = sizeof(float2) * N * N;
@@ -103,7 +103,7 @@ TEST(fftFPGATest, ValidSp2dFFTDDR){
   const int N = (1 << 6);
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
 
-  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft2d_ddr/fft2d_ddr.aocx", 0, 1);
+  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft2d_ddr/fft2d_ddr.aocx", 0);
   ASSERT_EQ(isInit, 0);
 
   size_t sz = sizeof(float2) * N * N;

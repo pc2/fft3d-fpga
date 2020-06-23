@@ -20,12 +20,12 @@ static const char *const usage[] = {
 int main(int argc, const char **argv) {
   int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0, interleaving = 0;
   char *path = "fft3d_emulate.aocx";
-  const char *platform = "Intel(R) FPGA";
+  const char *platform;
   fpga_t timing = {0.0, 0.0, 0.0, 0};
-  int use_svm = 0, use_emulator = 0;
+  int use_svm = 0;
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
-  bool status = true;
+  bool status = true, use_emulator = false;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -38,6 +38,7 @@ int main(int argc, const char **argv) {
     OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
+    OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
     OPT_END(),
   };
 
@@ -48,9 +49,17 @@ int main(int argc, const char **argv) {
 
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp, use_bram);
+
+  if(use_emulator){
+    platform = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
+  }
+  else{
+    platform = "Intel(R) FPGA SDK for OpenCL(TM)";
+  }
   
-  int isInit = fpga_initialize(platform, path, use_svm, use_emulator);
+  int isInit = fpga_initialize(platform, path, use_svm);
   if(isInit != 0){
+    fprintf(stderr, "FPGA initialization error\n");
     return EXIT_FAILURE;
   }
   else if (isInit == -6){

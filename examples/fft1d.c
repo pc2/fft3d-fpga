@@ -21,8 +21,8 @@ int main(int argc, const char **argv) {
   char *path = "fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
-  int use_svm = 0, use_emulator = 0;
-  bool status = true;
+  int use_svm = 0;
+  bool status = true, use_emulator = false;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -34,6 +34,7 @@ int main(int argc, const char **argv) {
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
     OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
+    OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
     OPT_END(),
   };
 
@@ -44,8 +45,15 @@ int main(int argc, const char **argv) {
 
   // Print to console the configuration chosen to execute during runtime
   print_config(N, dim, iter, inv, sp, use_bram);
+  
+  if(use_emulator){
+    platform = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
+  }
+  else{
+    platform = "Intel(R) FPGA SDK for OpenCL(TM)";
+  }
 
-  int isInit = fpga_initialize(platform, path, use_svm, use_emulator);
+  int isInit = fpga_initialize(platform, path, use_svm);
   if(isInit != 0){
     return EXIT_FAILURE;
   }
