@@ -25,15 +25,15 @@ TEST(fft2dFPGATest, InputValidityBRAM){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
 
   // null inp ptr input
-  fft_time = fftfpgaf_c2c_2d_bram(64, NULL, test, 0);
+  fft_time = fftfpgaf_c2c_2d_bram(64, NULL, test, 0, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // null out ptr input
-  fft_time = fftfpgaf_c2c_2d_bram(64, test, NULL, 0);
+  fft_time = fftfpgaf_c2c_2d_bram(64, test, NULL, 0, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   // if N not a power of 2
-  fft_time = fftfpgaf_c2c_2d_bram(63, test, test, 0);
+  fft_time = fftfpgaf_c2c_2d_bram(63, test, test, 0, 0);
   EXPECT_EQ(fft_time.valid, 0);
 
   free(test);
@@ -55,7 +55,7 @@ TEST(fft2dFPGATest, CorrectnessBRAM){
 
   fftf_create_data(inp, N * N);
 
-  fft_time = fftfpgaf_c2c_2d_bram(N, inp, out, 0);
+  fft_time = fftfpgaf_c2c_2d_bram(N, inp, out, 0, 0);
 
   int result = verify_sp_fft2d_fftw(out, inp, N, 0);
 
