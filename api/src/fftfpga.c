@@ -9,6 +9,7 @@
 #include "CL/opencl.h"
 
 #include "fftfpga/fftfpga.h"
+#include "svm.h"
 #include "opencl_utils.h"
 #include "misc.h"
 
@@ -23,7 +24,7 @@ static cl_command_queue queue1 = NULL, queue2 = NULL, queue3 = NULL;
 static cl_command_queue queue4 = NULL, queue5 = NULL, queue6 = NULL;
 
 //static int svm_handle;
-//static int svm_enabled = 0;
+static int svm_enabled = 0;
 #endif
 
 static void queue_setup();
@@ -80,6 +81,7 @@ void* fftfpgaf_complex_malloc(size_t sz, int svm){
           -2 Unable to find platform passed as argument
           -3 Unable to find devices for given OpenCL platform
           -4 Failed to create program, file not found in path
+          -5 Device does not support required SVM
 
  */
 int fpga_initialize(const char *platform_name, const char *path, int use_svm, int use_emulator){
@@ -111,6 +113,17 @@ int fpga_initialize(const char *platform_name, const char *path, int use_svm, in
 
   // use the first device.
   device = devices[0];
+
+  if(use_svm){
+    if(!check_valid_svm_device(device)){
+      return -5;
+    }
+    else{
+      printf("Supports SVM \n");
+      svm_enabled = 1;
+      return -6;
+    }
+  }
 
   // Create the context.
   context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
@@ -375,8 +388,8 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter){
 /**
  * \brief  compute an out-of-place single precision complex 2D-FFT using the DDR of the FPGA
  * \param  N    : integer pointer to size of FFT2d  
- * \param  inp  : float2 pointer to input data of size N
- * \param  out  : float2 pointer to output data of size N
+ * \param  inp  : float2 pointer to input data of size [N * N]
+ * \param  out  : float2 pointer to output data of size [N * N]
  * \param  inv  : int toggle to activate backward FFT
  * \param  iter : int toggle to activate backward FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
@@ -499,12 +512,13 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv){
 /**
  * \brief  compute an out-of-place single precision complex 2D-FFT using the BRAM of the FPGA
  * \param  N    : integer pointer to size of FFT2d  
- * \param  inp  : float2 pointer to input data of size N
- * \param  out  : float2 pointer to output data of size N
+ * \param  inp  : float2 pointer to input data of size [N * N]
+ * \param  out  : float2 pointer to output data of size [N * N]
  * \param  inv  : int toggle to activate backward FFT
+ * \param  interleaving : 1 if interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv){
+fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel ffta_kernel = NULL, fftb_kernel = NULL;
   cl_kernel fetch_kernel = NULL, transpose_kernel = NULL, store_kernel = NULL;
@@ -523,12 +537,21 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv){
 
   queue_setup();
 
+  cl_mem_flags flagbuf1, flagbuf2;
+  if(interleaving == 1){
+    flagbuf1 = CL_MEM_READ_WRITE;
+    flagbuf2 = CL_MEM_READ_WRITE;
+  }
+  else{
+    flagbuf1 = CL_MEM_WRITE_ONLY | CL_CHANNEL_1_INTELFPGA;
+    flagbuf2 = CL_MEM_READ_ONLY | CL_CHANNEL_2_INTELFPGA;
+  }
   // Device memory buffers
   cl_mem d_inData, d_outData;
-  d_inData = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, NULL, &status);
+  d_inData = clCreateBuffer(context, flagbuf1, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate input device buffer\n");
 
-  d_outData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, NULL, &status);
+  d_outData = clCreateBuffer(context, flagbuf2, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
  // Copy data from host to device
@@ -628,8 +651,16 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv){
   return fft_time;
 }
 
-
-fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv) {
+/**
+ * \brief  compute an out-of-place single precision complex 3D-FFT using the BRAM of the FPGA
+ * \param  N    : integer pointer addressing the size of FFT3d  
+ * \param  inp  : float2 pointer to input data of size [N * N * N]
+ * \param  out  : float2 pointer to output data of size [N * N * N]
+ * \param  inv  : int toggle to activate backward FFT
+ * \param  interleaving : 1 if using burst interleaved global memory buffers
+ * \return fpga_t : time taken in milliseconds for data transfers and execution
+ */
+fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving) {
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel fft_kernel = NULL, fft_kernel_2 = NULL;
   cl_kernel fetch_kernel = NULL, transpose_kernel = NULL, transpose_kernel_2 = NULL;
@@ -646,11 +677,21 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv) {
 
   queue_setup();
 
+  cl_mem_flags flagbuf1, flagbuf2;
+  if(interleaving == 1){
+    flagbuf1 = CL_MEM_READ_WRITE;
+    flagbuf2 = CL_MEM_READ_WRITE;
+  }
+  else{
+    flagbuf1 = CL_MEM_WRITE_ONLY | CL_CHANNEL_1_INTELFPGA;
+    flagbuf2 = CL_MEM_READ_ONLY | CL_CHANNEL_2_INTELFPGA;
+  }
+  
   // Device memory buffers
   cl_mem d_inData, d_outData;
-  d_inData = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * N * N * N, NULL, &status);
+  d_inData = clCreateBuffer(context, flagbuf1, sizeof(float2) * N * N * N, NULL, &status);
   checkError(status, "Failed to allocate input device buffer\n");
-  d_outData = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * N * N * N, NULL, &status);
+  d_outData = clCreateBuffer(context, flagbuf2, sizeof(float2) * N * N * N, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
  // Copy data from host to device
@@ -748,6 +789,15 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv) {
   return fft_time;
 }
 
+/**
+ * \brief  compute an out-of-place single precision complex 3D-FFT using the DDR of the FPGA
+ * \param  N    : integer pointer addressing the size of FFT3d  
+ * \param  inp  : float2 pointer to input data of size [N * N * N]
+ * \param  out  : float2 pointer to output data of size [N * N * N]
+ * \param  inv  : int toggle to activate backward FFT
+ * \param  interleaving : 1 if using burst interleaved global memory buffers
+ * \return fpga_t : time taken in milliseconds for data transfers and execution
+ */
 fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel ffta_kernel = NULL, fftb_kernel = NULL, fftc_kernel = NULL;

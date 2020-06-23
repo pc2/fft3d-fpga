@@ -18,7 +18,7 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0;
+  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0, interleaving = 0;
   char *path = "fft3d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -36,6 +36,7 @@ int main(int argc, const char **argv) {
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
     OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
+    OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_END(),
   };
@@ -51,6 +52,10 @@ int main(int argc, const char **argv) {
   int isInit = fpga_initialize(platform, path, use_svm, use_emulator);
   if(isInit != 0){
     return EXIT_FAILURE;
+  }
+  else if (isInit == -6){
+    printf("SVM Found \n");
+    return EXIT_SUCCESS;
   }
 
   if(sp == 0){
@@ -75,7 +80,7 @@ int main(int argc, const char **argv) {
       if(use_bram == 1){
         // use bram for 3d Transpose
         temp_timer = getTimeinMilliseconds();
-        timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv);
+        timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv, interleaving);
         total_api_time += getTimeinMilliseconds() - temp_timer;
       }
       else{
