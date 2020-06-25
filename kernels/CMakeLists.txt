@@ -11,12 +11,20 @@ set(LOG_POINTS 3 CACHE STRING "Log of per sample data points")
 math(EXPR POINTS "1 << ${LOG_POINTS}")
 
 set(LOG_FFT_SIZE 6 CACHE STRING "Log of points of FFT")
+set_property(CACHE LOG_FFT_SIZE PROPERTY STRINGS 4 5 6 7 8 9)
 math(EXPR FFT_SIZE "1 << ${LOG_FFT_SIZE}")
 message("-- FFT size is ${FFT_SIZE}")
+
+#set(BUF_LOC "DDR")
+set(BUFFER_LOCATION "DDR" CACHE STRING "Buffer location of 3d Transpose")
+set_property(CACHE BUFFER_LOCATION PROPERTY STRINGS "DDR" "device")
+
+message("-- Buffer location for 3d Transpose is ${BUFFER_LOCATION}")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/common/fft_config.h.in"
   "${CMAKE_BINARY_DIR}/kernels/common/fft_config.h"
+  ESCAPE_QUOTES
 )
 
 ##

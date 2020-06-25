@@ -6,6 +6,7 @@ fpgabitstream/
 reports/
 vscode/
 scripts/
+build_svm/
 
 tags
 *.DS_Store

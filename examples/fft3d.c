@@ -52,19 +52,17 @@ int main(int argc, const char **argv) {
 
   if(use_emulator){
     platform = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
+    //platform = "Intel(R) FPGA";
   }
   else{
     platform = "Intel(R) FPGA SDK for OpenCL(TM)";
+    //platform = "Intel(R) FPGA";
   }
   
   int isInit = fpga_initialize(platform, path, use_svm);
   if(isInit != 0){
     fprintf(stderr, "FPGA initialization error\n");
     return EXIT_FAILURE;
-  }
-  else if (isInit == -6){
-    printf("SVM Found \n");
-    return EXIT_SUCCESS;
   }
 
   if(sp == 0){
@@ -81,6 +79,7 @@ int main(int argc, const char **argv) {
 
       status = fftf_create_data(inp, N * N * N);
       if(!status){
+        fprintf(stderr, "Error in Data Creation \n");
         free(inp);
         free(out);
         return EXIT_FAILURE;
