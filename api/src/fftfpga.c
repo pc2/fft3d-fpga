@@ -72,6 +72,9 @@ void* fftfpgaf_complex_malloc(size_t sz, int svm){
     return ((float2 *)alignedMalloc(sz));
   }
   */
+  if(sz == 0){
+    return NULL;
+  }
   return ((float2 *)alignedMalloc(sz));
 }
 
