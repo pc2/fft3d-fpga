@@ -27,7 +27,7 @@ int bit_reversed(int x, int bits) {
 }
 
 // Kernel that fetches data from global memory 
-kernel void fetch1(global volatile float2 * restrict src) {
+kernel void fetch1(global volatile float2 * restrict src1) {
   const unsigned N = (1 << LOGN);
 
   for(unsigned k = 0; k < (N * N); k++){ 
@@ -35,7 +35,7 @@ kernel void fetch1(global volatile float2 * restrict src) {
 
     #pragma unroll 8
     for(unsigned i = 0; i < N; i++){
-      buf[i & ((1<<LOGN)-1)] = src[(k << LOGN) + i];    
+      buf[i & ((1<<LOGN)-1)] = src1[(k << LOGN) + i];    
     }
 
     for(unsigned j = 0; j < (N / 8); j++){
@@ -201,7 +201,9 @@ kernel void fft3db(int inverse) {
 /*
  * Input through channels in bit reversed format
  */
-kernel void store1(global volatile float2 * restrict dest){
+__kernel 
+void store1(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict dest1){ 
+            
   const unsigned N = (1 << LOGN);
   local float2 buf[N * N];
 
@@ -231,14 +233,16 @@ kernel void store1(global volatile float2 * restrict dest){
       
       #pragma unroll 8
       for( unsigned xdim = 0; xdim < N; xdim++){
-        dest[ddr_loc + xdim] = buf[(xdim * N) + revcolt];
+        dest1[ddr_loc + xdim] = buf[(xdim * N) + revcolt];
       }
     }
   } // stored N*N*N points in DDR
 }
 
 // Kernel that fetches data from global memory 
-kernel void fetch2(global volatile float2 * restrict src) {
+__kernel
+void fetch2(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict src2){
+     
   const unsigned N = (1 << LOGN);
   local float2 buf[N * N];
 
@@ -251,7 +255,7 @@ kernel void fetch2(global volatile float2 * restrict src) {
 
       #pragma unroll 8
       for(unsigned xdim = 0; xdim < N; xdim++){
-        buf[(i * N) + xdim] = src[ddr_loc + xdim];
+        buf[(i * N) + xdim] = src2[ddr_loc + xdim];
       }
     }
 
@@ -331,7 +335,7 @@ kernel void fft3dc(int inverse) {
  * input through channels: transformed zx planes
  *  - values in the z axis is in bitreversed format
  */ 
-kernel void store2(global float2 * restrict dest){
+kernel void store2(global float2 * restrict dest2){
 
   const unsigned N = (1 << LOGN);
 
@@ -386,7 +390,7 @@ kernel void store2(global float2 * restrict dest){
       #pragma unroll 8
       for(unsigned xdim = 0; xdim < N; xdim++){
         unsigned buf_loc = revcolt + (xdim * N);
-        dest[ddr_loc + xdim] = buf[buf_loc];
+        dest2[ddr_loc + xdim] = buf[buf_loc];
       }
     } // stored 2d buffer to ddr
 
