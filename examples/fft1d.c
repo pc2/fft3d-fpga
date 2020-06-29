@@ -66,8 +66,8 @@ int main(int argc, const char **argv) {
   else{
     size_t inp_sz = sizeof(float2) * N * iter;
 
-    float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-    float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+    float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
+    float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
     status = fftf_create_data(inp, N * iter);
     if(!status){

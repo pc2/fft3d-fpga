@@ -34,9 +34,7 @@ TEST(fftFPGASetupTest, ValidInit){
  */
 TEST(fftFPGASetupTest, ValidDpMalloc){
   // request zero size
-  EXPECT_EQ(fftfpga_complex_malloc(0, 0), nullptr);
-  // TODO: do not support svm
-  EXPECT_EQ(fftfpga_complex_malloc(0, 1), nullptr);
+  EXPECT_EQ(fftfpga_complex_malloc(0), nullptr);
 }
 
 /**
@@ -44,7 +42,5 @@ TEST(fftFPGASetupTest, ValidDpMalloc){
  */
 TEST(fftFPGASetupTest, ValidSpMalloc){
   // request zero size
-  EXPECT_EQ(fftfpgaf_complex_malloc(0, 0), nullptr);
-  // TODO: do not support svm
-  EXPECT_EQ(fftfpgaf_complex_malloc(0, 1), nullptr);
+  EXPECT_EQ(fftfpgaf_complex_malloc(0), nullptr);
 }

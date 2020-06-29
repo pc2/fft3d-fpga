@@ -45,8 +45,8 @@ TEST(fft1dFPGATest, CorrectnessSp){
   int N = (1 << logN);
 
   size_t sz = sizeof(float2) * N;
-  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
-  float2 *out = (float2*)fftfpgaf_complex_malloc(sz, 0);
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz);
+  float2 *out = (float2*)fftfpgaf_complex_malloc(sz);
 
   // malloc data to input
   fftf_create_data(inp, N);
@@ -60,7 +60,7 @@ TEST(fft1dFPGATest, CorrectnessSp){
   fftwf_complex* fftw_out = (fftwf_complex*)fftwf_alloc_complex(sz);
   fftwf_plan plan = fftwf_plan_dft_1d( N, &fftw_inp[0], &fftw_out[0], FFTW_FORWARD, FFTW_ESTIMATE);
 
-  float2 *temp = (float2 *)fftfpgaf_complex_malloc(sz, 0);
+  float2 *temp = (float2 *)fftfpgaf_complex_malloc(sz);
 
   for (int i = 0; i < N; i++){
     temp[i] = out[i];

@@ -207,7 +207,7 @@ static size_t loadBinary(const char *binary_path, char **buf){
  * \return pointer to allocated memory on successful allocation otherwise NULL
  */
 void* alignedMalloc(size_t size){
-  const unsigned OPENCL_ALIGNMENT = 64;
+  size_t OPENCL_ALIGNMENT = 64;
   void *memptr = NULL;
   int ret = posix_memalign(&memptr, OPENCL_ALIGNMENT, size);
   if (ret != 0){

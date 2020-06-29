@@ -50,8 +50,8 @@ TEST(fft2dFPGATest, CorrectnessBRAM){
   EXPECT_EQ(isInit, 0);
 
   size_t sz = sizeof(float2) * N * N;
-  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
-  float2 *out = (float2*)fftfpgaf_complex_malloc(sz, 0);
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz);
+  float2 *out = (float2*)fftfpgaf_complex_malloc(sz);
 
   fftf_create_data(inp, N * N);
 
@@ -107,8 +107,8 @@ TEST(fftFPGATest, ValidSp2dFFTDDR){
   ASSERT_EQ(isInit, 0);
 
   size_t sz = sizeof(float2) * N * N;
-  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
-  float2 *out = (float2*)fftfpgaf_complex_malloc(sz, 0);
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz);
+  float2 *out = (float2*)fftfpgaf_complex_malloc(sz);
 
   fftf_create_data(inp, N * N);
 

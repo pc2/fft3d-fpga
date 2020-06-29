@@ -70,8 +70,8 @@ int main(int argc, const char **argv) {
 
     for(size_t i = 0; i < iter; i++){
       size_t inp_sz = sizeof(float2) * N * N;
-      float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
-      float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz, use_svm);
+      float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
+      float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
       status = fftf_create_data(inp, N * N);
       if(!status){

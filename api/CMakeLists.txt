@@ -27,3 +27,27 @@ target_include_directories(${PROJECT_NAME}
   
 target_link_libraries(${PROJECT_NAME}
     PUBLIC ${IntelFPGAOpenCL_LIBRARIES} m)
+
+##
+# Doxygen Build
+##
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+  
+  # Doxygen Options
+  set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/docs)
+  set(DOXYGEN_PROJECT_NAME "FFTFPGA")
+  set(DOXYGEN_PROJECT_BRIEF "OpenCL based FFT library for FPGAs")
+  set(DOXYGEN_GENERATE_LATEX YES)
+  set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
+  set(DOXYGEN_SHOW_FILES YES)
+
+  doxygen_add_docs(doc_doxygen
+    ${PROJECT_SOURCE_DIR}/include/fftfpga/fftfpga.h 
+    COMMENT "Generate library documentation"
+  )
+
+else (DOXYGEN_FOUND)
+  message("Doxygen need to be installed to generate the doxygen documentation")
+endif (DOXYGEN_FOUND)

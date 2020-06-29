@@ -36,13 +36,8 @@ void queue_cleanup();
  * @param svm : 1 if svm
  * @return void ptr or NULL
  */
-void* fftfpga_complex_malloc(size_t sz, int svm){
-  if(svm == 1){
-    fprintf(stderr, "Working in progress\n");
-    return NULL;
-    // return aocl_mmd_shared_mem_alloc(svm_handle, sizeof(double2) * sz, inData, device_ptr);
-  }
-  else if(sz == 0){
+void* fftfpga_complex_malloc(size_t sz){
+  if(sz == 0){
     return NULL;
   }
   else{
@@ -56,22 +51,8 @@ void* fftfpga_complex_malloc(size_t sz, int svm){
  * @param svm : 1 if svm
  * @return void ptr or NULL
  */
-void* fftfpgaf_complex_malloc(size_t sz, int svm){
-  /*
-  if(svm == 1){
-     return (float2 *)clSVMAlloc(context, CL_MEM_READ_WRITE, sz, 0);
+void* fftfpgaf_complex_malloc(size_t sz){
 
-    //fprintf(stderr, "Working in progress\n");
-    //return NULL;
-    // return aocl_mmd_shared_mem_alloc(svm_handle, sizeof(double2) * sz, inData, device_ptr);
-  }
-  else if(sz == 0){
-    return NULL;
-  }
-  else{
-    return ((float2 *)alignedMalloc(sz));
-  }
-  */
   if(sz == 0){
     return NULL;
   }
@@ -122,8 +103,6 @@ int fpga_initialize(const char *platform_name, const char *path, int use_svm){
   device = devices[0];
 
   if(use_svm){
-    //svm_enabled = 1;
-    
     if(!check_valid_svm_device(device)){
       return -5;
     }
@@ -810,6 +789,20 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
+  
+  /*
+  const char* board_name;
+  int *bytes;
+  aocl_mmd_offline_info_t info_id;
+  info_id = AOCL_MMD_BOARD_NAMES;
+  aocl_mmd_get_offline_info(info_id, sizeof(char*), &board_name, size_t(int));
+
+  svm_handle = aocl_mmd_open(board_name);
+  if(svm_handle < 0 ){
+    return NULL;
+  }
+  return aocl_mmd_shared_mem_alloc(svm_handle, sz, inData, device_ptr);
+  */
 
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){

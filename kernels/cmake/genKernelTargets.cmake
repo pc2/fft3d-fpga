@@ -58,7 +58,7 @@ function(gen_fft_targets)
     add_custom_target(${kernel_fname}_syn
       DEPENDS ${SYN_BSTREAM} ${CL_SRC} ${CL_HEADER}
       COMMENT 
-        "Building a report for ${kernel_fname} to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+        "Synthesizing for ${kernel_fname} using ${FPGA_BOARD_NAME} to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
     )
   endforeach()
 

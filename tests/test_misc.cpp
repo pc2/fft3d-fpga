@@ -14,7 +14,7 @@ extern "C" {
 TEST(HelperTest, CreateValidRandomSpData){
   int N = 8;
   size_t sz = sizeof(float2) * N;
-  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz, 0);
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(sz);
 
   // sz 0
   EXPECT_FALSE(fftf_create_data(0, 1));
@@ -31,7 +31,7 @@ TEST(HelperTest, CreateValidRandomSpData){
 TEST(HelperTest, CreateValidRandomDpData){
   int N = 8;
   size_t sz = sizeof(double2) * N;
-  double2 *inp = (double2*)fftfpga_complex_malloc(sz, 0);
+  double2 *inp = (double2*)fftfpga_complex_malloc(sz);
 
   // sz 0
   EXPECT_FALSE(fft_create_data(0, 1));
