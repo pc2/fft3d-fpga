@@ -22,6 +22,7 @@ static cl_context context = NULL;
 static cl_program program = NULL;
 static cl_command_queue queue1 = NULL, queue2 = NULL, queue3 = NULL;
 static cl_command_queue queue4 = NULL, queue5 = NULL, queue6 = NULL;
+static cl_command_queue queue7 = NULL, queue8 = NULL;
 
 //static int svm_handle;
 static int svm_enabled = 0;
@@ -1021,6 +1022,291 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
   return fft_time;
 }
 
+fpga_t fftfpgaf_c2c_3d_ddr_test(int N, float2 *inp, float2 *out, int inv) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+  cl_int status = 0;
+  int num_pts = N * N * N;
+
+  // if N is not a power of 2
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
+    return fft_time;
+  }
+
+#ifdef VERBOSE
+  printf("Launching%s 3d FFT transform in DDR \n", inv ? " inverse":"");
+#endif
+
+  // Can't pass bool to device, so convert it to int
+  int inverse_int = inv;
+
+  // Setup kernels
+  cl_kernel fetch1_kernel = clCreateKernel(program, "fetch1", &status);
+  checkError(status, "Failed to create fetch1 kernel");
+  cl_kernel ffta_kernel = clCreateKernel(program, "fft3da", &status);
+  checkError(status, "Failed to create fft3da kernel");
+  cl_kernel transpose_kernel = clCreateKernel(program, "transpose", &status);
+  checkError(status, "Failed to create transpose kernel");
+  cl_kernel fftb_kernel = clCreateKernel(program, "fft3db", &status);
+  checkError(status, "Failed to create fft3db kernel");
+  cl_kernel store1_kernel = clCreateKernel(program, "store1", &status);
+  checkError(status, "Failed to create store1 kernel");
+
+  cl_kernel fetch2_kernel = clCreateKernel(program, "fetch2", &status);
+  checkError(status, "Failed to create fetch2 kernel");
+  cl_kernel fftc_kernel = clCreateKernel(program, "fft3dc", &status);
+  checkError(status, "Failed to create fft3dc kernel");
+  cl_kernel store2_kernel = clCreateKernel(program, "store2", &status);
+  checkError(status, "Failed to create store2 kernel");
+
+  // Setup Queues to the kernels
+  queue_setup();
+
+  // Device memory buffers
+  cl_mem d_outData;
+  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+  cl_mem d_outData_2;
+  d_outData_2 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+  float2 *h_inData, *h_outData;
+  // allocate SVM buffers
+  // Required outside the if stm so that compiler doesn't warm about uninitialized variables
+  h_inData = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
+  h_outData = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
+
+  float2 *h_inData_2, *h_outData_2;
+  h_inData_2 = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
+  h_outData_2 = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
+
+  if(svm_enabled){
+
+    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData, sizeof(float2) * num_pts, 0, NULL, NULL);
+    checkError(status, "Failed to map input data");
+
+    // copy data into h_inData
+    for(size_t i = 0; i < num_pts; i++){
+      h_inData[i].x = inp[i].x;
+      h_inData[i].y = inp[i].y;
+    }
+
+    status = clEnqueueSVMUnmap(queue1, (void *)h_inData, 0, NULL, NULL);
+    checkError(status, "Failed to unmap input data");
+
+    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData_2, sizeof(float2) * num_pts, 0, NULL, NULL);
+    checkError(status, "Failed to map input data");
+
+    size_t stride = num_pts; 
+    // copy data into h_inData
+    for(size_t i = 0; i < num_pts; i++){
+      h_inData_2[i].x = inp[stride + i].x;
+      h_inData_2[i].y = inp[stride + i].y;
+    }
+
+    status = clEnqueueSVMUnmap(queue1, (void *)h_inData_2, 0, NULL, NULL);
+    checkError(status, "Failed to unmap input data");
+
+    /*
+    * kernel arguments
+    */
+    // write to fetch kernel using SVM based PCIe
+    status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData);
+    checkError(status, "Failed to set fetch1 kernel arg");
+
+    status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+    checkError(status, "Failed to set ffta kernel arg");
+    status=clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+    checkError(status, "Failed to set fftb kernel arg");
+
+    // kernel stores to DDR memory
+    status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+    checkError(status, "Failed to set store1 kernel arg");
+
+    // kernel fetches from DDR memory
+    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+    checkError(status, "Failed to set fetch2 kernel arg");
+    status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+    checkError(status, "Failed to set fftc kernel arg");
+
+    // kernel stores using SVM based PCIe to host
+    status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData);
+    checkError(status, "Failed to set store2 kernel arg");
+
+    /*
+    *  First iter arg set
+    *  Start first half of first batch's iter
+    */
+
+    fft_time.exec_t = getTimeinMilliSec();
+    status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+
+    status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose kernel");
+
+    status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch second fft kernel");
+
+    status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch second transpose kernel");
+
+    // Wait for all command queues to complete pending events
+    status = clFinish(queue1);
+    checkError(status, "failed to finish");
+    status = clFinish(queue2);
+    checkError(status, "failed to finish");
+    status = clFinish(queue3);
+    checkError(status, "failed to finish");
+    status = clFinish(queue4);
+    checkError(status, "failed to finish");
+    status = clFinish(queue5);
+    checkError(status, "failed to finish");
+
+    // Second Batch: Set first iter of second batch
+    // Change only the SVM and ddr pointers
+    status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData_2);
+    checkError(status, "Failed to set fetch1 kernel arg");
+    status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData_2);
+    checkError(status, "Failed to set store1 kernel arg");
+
+    // Start second batch first iter
+    status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+
+    status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose kernel");
+
+    status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch second fft kernel");
+
+    status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch second transpose kernel");
+
+    // first batch second iter
+    status = clEnqueueTask(queue6, fetch2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+
+    status = clEnqueueTask(queue7, fftc_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue8, store2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose kernel");
+
+    status = clFinish(queue1);
+    checkError(status, "failed to finish");
+    status = clFinish(queue2);
+    checkError(status, "failed to finish");
+    status = clFinish(queue3);
+    checkError(status, "failed to finish");
+    status = clFinish(queue4);
+    checkError(status, "failed to finish");
+    status = clFinish(queue5);
+    checkError(status, "failed to finish");
+    status = clFinish(queue6);
+    checkError(status, "failed to finish");
+    status = clFinish(queue7);
+    checkError(status, "failed to finish");
+    status = clFinish(queue8);
+    checkError(status, "failed to finish");
+
+    // second batch second iter
+    // kernel fetches from DDR memory
+    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_2);
+    checkError(status, "Failed to set fetch2 kernel arg");
+    status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData_2);
+    checkError(status, "Failed to set store2 kernel arg");
+
+    status = clEnqueueTask(queue6, fetch2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+
+    status = clEnqueueTask(queue7, fftc_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue8, store2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose kernel");
+
+    status = clFinish(queue6);
+    checkError(status, "failed to finish");
+    status = clFinish(queue7);
+    checkError(status, "failed to finish");
+    status = clFinish(queue8);
+    checkError(status, "failed to finish");
+    fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
+
+    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
+      (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
+    checkError(status, "Failed to map out data");
+
+    for(size_t i = 0; i < num_pts; i++){
+      out[i].x = h_outData[i].x;
+      out[i].y = h_outData[i].y;
+    }
+
+    status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
+    checkError(status, "Failed to unmap out data");
+
+    status = clEnqueueSVMMap(queue2, CL_TRUE, CL_MAP_READ,
+      (void *)h_outData_2, sizeof(float2) * num_pts, 0, NULL, NULL);
+    checkError(status, "Failed to map out data");
+
+    for(size_t i = 0; i < num_pts; i++){
+      out[stride + i].x = h_outData_2[i].x;
+      out[stride + i].y = h_outData_2[i].y;
+    }
+
+    status = clEnqueueSVMUnmap(queue2, (void *)h_outData_2, 0, NULL, NULL);
+    checkError(status, "Failed to unmap out data");
+
+    if (h_inData)
+      clSVMFree(context, h_inData);
+    if (h_outData)
+      clSVMFree(context, h_outData);
+
+    if (h_inData_2)
+      clSVMFree(context, h_inData_2);
+    if (h_outData_2)
+      clSVMFree(context, h_outData_2);
+
+  }
+
+  queue_cleanup();
+
+  if (d_outData) 
+    clReleaseMemObject(d_outData);
+  if (d_outData_2) 
+    clReleaseMemObject(d_outData_2);
+
+  if(fetch1_kernel) 
+    clReleaseKernel(fetch1_kernel);  
+  if(fetch2_kernel) 
+    clReleaseKernel(fetch2_kernel);  
+
+  if(ffta_kernel) 
+    clReleaseKernel(ffta_kernel);  
+  if(fftb_kernel) 
+    clReleaseKernel(fftb_kernel);  
+  if(fftc_kernel) 
+    clReleaseKernel(fftc_kernel);  
+
+  if(transpose_kernel) 
+    clReleaseKernel(transpose_kernel);  
+
+  if(store1_kernel) 
+    clReleaseKernel(store1_kernel);  
+  if(store2_kernel) 
+    clReleaseKernel(store2_kernel);  
+
+  fft_time.valid = 1;
+  return fft_time;
+}
+
 
 /**
  * \brief Create a command queue for each kernel
@@ -1040,6 +1326,10 @@ void queue_setup(){
   checkError(status, "Failed to create command queue5");
   queue6 = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
   checkError(status, "Failed to create command queue6");
+  queue7 = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
+  checkError(status, "Failed to create command queue6");
+  queue8 = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
+  checkError(status, "Failed to create command queue6");
 }
 
 /**
@@ -1058,4 +1348,8 @@ void queue_cleanup() {
     clReleaseCommandQueue(queue5);
   if(queue6) 
     clReleaseCommandQueue(queue6);
+  if(queue7) 
+    clReleaseCommandQueue(queue7);
+  if(queue8) 
+    clReleaseCommandQueue(queue8);
 }

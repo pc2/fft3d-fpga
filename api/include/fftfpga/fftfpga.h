@@ -131,4 +131,7 @@ extern fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int
  */
 extern fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv);
 
+extern fpga_t fftfpgaf_c2c_3d_ddr_test(int N, float2 *inp, float2 *out, int inv);
+
+
 #endif
