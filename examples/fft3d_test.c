@@ -118,6 +118,8 @@ int main(int argc, const char **argv) {
         free(out_test);
         return EXIT_FAILURE;
       }
+      free(inp_test);
+      free(out_test);
 #endif
       if(timing.valid == 0){
         fprintf(stderr, "Invalid execution, timing found to be 0");
@@ -134,8 +136,6 @@ int main(int argc, const char **argv) {
       free(inp);
       free(out);
 
-      free(inp_test);
-      free(out_test);
     }  // iter
   } // sp condition
 

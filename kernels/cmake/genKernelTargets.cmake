@@ -20,6 +20,8 @@ function(gen_fft_targets)
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/emu_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
     set(REP_BSTREAM 
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/rep_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocr")
+    set(PROF_BSTREAM 
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/prof_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
     set(SYN_BSTREAM 
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/syn_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
 
@@ -47,6 +49,18 @@ function(gen_fft_targets)
       DEPENDS ${REP_BSTREAM} ${CL_SRC} ${CL_HEADER}
       COMMENT 
         "Building a report for ${kernel_fname} to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+    )
+
+    # Profile Target
+    add_custom_command(OUTPUT ${PROF_BSTREAM}
+      COMMAND ${IntelFPGAOpenCL_AOC} ${CL_SRC} ${CL_INCL_DIR} ${AOC_FLAGS} ${PROF_FLAGS} -board=${FPGA_BOARD_NAME} -o ${PROF_BSTREAM}
+      MAIN_DEPENDENCY ${CL_SRC}
+    )
+    
+    add_custom_target(${kernel_fname}_profile
+      DEPENDS ${PROF_BSTREAM} ${CL_SRC} ${CL_HEADER}
+      COMMENT 
+        "Profiling for ${kernel_fname} using ${FPGA_BOARD_NAME} to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
     )
 
     # Synthesis Target
