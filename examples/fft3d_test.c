@@ -18,7 +18,7 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0, interleaving = 0;
+  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0, interleaving = 0, batch = 1;
   char *path = "fft3d_emulate.aocx";
   const char *platform;
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -35,6 +35,7 @@ int main(int argc, const char **argv) {
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
+    OPT_BOOLEAN('c',"batch", &batch, "Batch"),
     OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
@@ -73,11 +74,11 @@ int main(int argc, const char **argv) {
     for(size_t i = 0; i < iter; i++){
 
       // create and destroy data every iteration
-      size_t inp_sz = sizeof(float2) * N * N * N * 2;
+      size_t inp_sz = sizeof(float2) * N * N * N * batch;
       float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
       float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
-      status = fftf_create_data(inp, N * N * N * 2);
+      status = fftf_create_data(inp, N * N * N * batch);
       if(!status){
         fprintf(stderr, "Error in Data Creation \n");
         free(inp);
@@ -87,12 +88,12 @@ int main(int argc, const char **argv) {
 
       // use ddr for 3d Transpose
       temp_timer = getTimeinMilliseconds();
-      timing = fftfpgaf_c2c_3d_ddr_test(N, inp, out, inv);
+      timing = fftfpgaf_c2c_3d_ddr_svm_batch(N, inp, out, inv, batch);
       total_api_time += getTimeinMilliseconds() - temp_timer;
 
 #ifdef USE_FFTW
-
-      if(!verify_sp_fft3d_fftw(out, inp, N, inv)){
+      printf("FFTW Validation\n");
+      if(!verify_sp_fft3d_fftw(out, inp, N, inv, 1)){
         fprintf(stderr, "3d FFT Verification Failed \n");
         free(inp);
         free(out);
@@ -112,7 +113,7 @@ int main(int argc, const char **argv) {
         out_test[i].y = out[str + i].y;
       }
 
-      if(!verify_sp_fft3d_fftw(out_test, inp_test, N, inv)){
+      if(!verify_sp_fft3d_fftw(out_test, inp_test, N, inv, 1)){
         fprintf(stderr, "3d FFT Verification Failed for second batch\n");
         free(inp_test);
         free(out_test);

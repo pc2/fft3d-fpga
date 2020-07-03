@@ -14,7 +14,7 @@
  * \param inverse: 1 if inverse
  * \return true if verification passed
  */
-bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
+bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse, int how_many){
 
   // Copy inp data to verify using FFTW
   // requires allocating data specifically for FFTW computation
@@ -54,7 +54,7 @@ bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
     mag_sum += magnitude;
     noise_sum += noise;
 #ifndef NDEBUG
-    printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
+    //printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif            
   }
 
@@ -126,7 +126,7 @@ bool verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
     mag_sum += magnitude;
     noise_sum += noise;
 #ifndef NDEBUG
-    printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
+    //printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif            
   }
 

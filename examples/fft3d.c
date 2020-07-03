@@ -100,7 +100,7 @@ int main(int argc, const char **argv) {
       }
 
 #ifdef USE_FFTW
-      if(!verify_sp_fft3d_fftw(out, inp, N, inv)){
+      if(!verify_sp_fft3d_fftw(out, inp, N, inv, 1)){
         fprintf(stderr, "3d FFT Verification Failed \n");
         free(inp);
         free(out);
