@@ -17,7 +17,7 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, use_bram;
+  int N = 64, dim = 1, iter = 1, inv = 0, sp = 0, batch = 1, use_bram;
   char *path = "fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -32,6 +32,7 @@ int main(int argc, const char **argv) {
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
+    OPT_INTEGER('c',"batch", &batch, "Batch"),
     OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
@@ -44,7 +45,7 @@ int main(int argc, const char **argv) {
   argc = argparse_parse(&argparse, argc, argv);
 
   // Print to console the configuration chosen to execute during runtime
-  print_config(N, dim, iter, inv, sp, use_bram);
+  print_config(N, dim, iter, inv, sp, batch, use_bram);
   
   if(use_emulator){
     platform = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";

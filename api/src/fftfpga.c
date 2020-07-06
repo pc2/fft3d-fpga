@@ -1067,7 +1067,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
 
   // Device memory buffers: double buffers
   cl_mem d_outData_0;
-  d_outData_0 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  d_outData_0 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
   cl_mem d_outData_1;
@@ -1089,14 +1089,11 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
     for(size_t j = 0; j < num_pts; j++){
       h_inData[i][j].x = inp[stride + j].x;
       h_inData[i][j].y = inp[stride + j].y;
-
-      //printf("%lu: %lu: (%f, %f)\n", i, j, h_inData[i][j].x, h_inData[i][j].y);
     }
 
     status = clEnqueueSVMUnmap(queue1, (void *)h_inData[i], 0, NULL, NULL);
     checkError(status, "Failed to unmap input data");
   }
-  printf("Transferred data to SVM buffers \n");
 
   /*
   * kernel arguments
@@ -1113,16 +1110,6 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
   // kernel stores to DDR memory
   status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
   checkError(status, "Failed to set store1 kernel arg");
-
-  // kernel fetches from DDR memory
-  status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
-  checkError(status, "Failed to set fetch2 kernel arg");
-  status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-  checkError(status, "Failed to set fftc kernel arg");
-
-  // kernel stores using SVM based PCIe to host
-  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData[0]);
-  checkError(status, "Failed to set store2 kernel arg");
 
   /*
   *  First batch write phase
@@ -1143,24 +1130,44 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
   status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch second transpose kernel");
 
-  // Wait for all command queues to complete pending events
-  status = clFinish(queue1);
-  checkError(status, "failed to finish");
-  status = clFinish(queue2);
-  checkError(status, "failed to finish");
-  status = clFinish(queue3);
-  checkError(status, "failed to finish");
-  status = clFinish(queue4);
-  checkError(status, "failed to finish");
-  status = clFinish(queue5);
-  checkError(status, "failed to finish");
-    
-  printf("First iter write phase complete \n");
   for(size_t i = 1; i < how_many; i++){
 
     /*
-      *  write phase of current iteration
-      */
+    *  Read phase of previous iteration
+    */
+    // kernel fetches from DDR memory
+    // kernel stores using SVM based PCIe to host
+    if( (i % 2) == 1){
+      // if odd number of batches
+      status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
+      checkError(status, "Failed to set fetch2 kernel arg");
+
+      // Start fetch2 phase with same queue as store1
+      status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
+      checkError(status, "Failed to launch fetch kernel");
+    }
+    else{
+      status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_1);
+      checkError(status, "Failed to set fetch2 kernel arg");
+
+      // Start fetch2 phase with same queue as store1
+      status = clEnqueueTask(queue8, fetch2_kernel, 0, NULL, NULL);
+      checkError(status, "Failed to launch fetch kernel");
+    }
+    status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+    checkError(status, "Failed to set fftc kernel arg");
+    status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData[i-1]);
+    checkError(status, "Failed to set store2 kernel arg");
+
+    status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue7, store2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose kernel");
+
+    /*
+     *  write phase of current iteration
+     */
     // change write phase host and ddr ptrs
     status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData[i]);
     checkError(status, "Failed to set fetch1 kernel arg");
@@ -1186,67 +1193,57 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
     status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch second fft kernel");
 
-    status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch second transpose kernel");
-
-    /*
-    *  Read phase of previous iteration
-    */
-    status = clEnqueueTask(queue6, fetch2_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fetch kernel");
-
-    status = clEnqueueTask(queue7, fftc_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fft kernel");
-
-    status = clEnqueueTask(queue8, store2_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch transpose kernel");
-
-    status = clFinish(queue1);
-    checkError(status, "failed to finish");
-    status = clFinish(queue2);
-    checkError(status, "failed to finish");
-    status = clFinish(queue3);
-    checkError(status, "failed to finish");
-    status = clFinish(queue4);
-    checkError(status, "failed to finish");
-    status = clFinish(queue5);
-    checkError(status, "failed to finish");
-    status = clFinish(queue6);
-    checkError(status, "failed to finish");
-    status = clFinish(queue7);
-    checkError(status, "failed to finish");
-    status = clFinish(queue8);
-    checkError(status, "failed to finish");
-
-    // Change read phase ptrs to current iteration
-    if( (i % 2) == 1){
-      status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_1);
-      checkError(status, "Failed to set fetch2 kernel arg");
+    if(i % 2 == 1){
+      status = clEnqueueTask(queue8, store1_kernel, 0, NULL, NULL);
+      checkError(status, "Failed to launch second transpose kernel");
     }
     else{
-      status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
-      checkError(status, "Failed to set fetch2 kernel arg");
+      status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
+      checkError(status, "Failed to launch second transpose kernel");
     }
-    status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData[i]);
-    checkError(status, "Failed to set store2 kernel arg");
   }
   
-  printf("Read phase left \n");
-  status = clEnqueueTask(queue6, fetch2_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fetch kernel");
+  if(how_many % 2 == 1){
+    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
+    checkError(status, "Failed to set fetch2 kernel arg");
 
-  status = clEnqueueTask(queue7, fftc_kernel, 0, NULL, NULL);
+    status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+  }
+  else{
+    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_1);
+    checkError(status, "Failed to set fetch2 kernel arg");
+    status = clEnqueueTask(queue8, fetch2_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+  }
+  status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set fftc kernel arg");
+  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData[how_many-1]);
+  checkError(status, "Failed to set store2 kernel arg");
+
+  status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue8, store2_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue7, store2_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose kernel");
 
+  status = clFinish(queue1);
+  checkError(status, "Failed to finish queue1");
+  status = clFinish(queue2);
+  checkError(status, "Failed to finish queue2");
+  status = clFinish(queue3);
+  checkError(status, "Failed to finish queue1");
+  status = clFinish(queue4);
+  checkError(status, "Failed to finish queue2");
+  status = clFinish(queue5);
+  checkError(status, "Failed to finish queue1");
   status = clFinish(queue6);
-  checkError(status, "failed to finish");
+  checkError(status, "Failed to finish queue2");
   status = clFinish(queue7);
-  checkError(status, "failed to finish");
+  checkError(status, "Failed to finish queue1");
   status = clFinish(queue8);
-  checkError(status, "failed to finish");
+  checkError(status, "Failed to finish queue2");
+
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
   for(size_t i = 0; i < how_many; i++){
@@ -1255,27 +1252,23 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
       (void *)h_outData[i], sizeof(float2) * num_pts, 0, NULL, NULL);
     checkError(status, "Failed to map out data");
 
-    size_t stride = how_many * num_pts;
+    size_t stride = i * num_pts;
     for(size_t j = 0; j < num_pts; j++){
       out[stride + j].x = h_outData[i][j].x;
       out[stride + j].y = h_outData[i][j].y;
-      printf("%lu: %lu: (%f, %f)\n", i, j, out[stride+j].x, out[stride+j].y);
     }
 
     status = clEnqueueSVMUnmap(queue2, (void *)h_outData[i], 0, NULL, NULL);
     checkError(status, "Failed to unmap out data");
   }
 
-  printf("written to SVM phase left \n");
   for(size_t i = 0; i < how_many; i++){
     clSVMFree(context, h_inData[i]);
     clSVMFree(context, h_outData[i]);
   }
 
-  printf("Freed SVM buffer \n");
   queue_cleanup();
 
-  printf("Freeing ddr buffer\n");
   if (d_outData_0) 
     clReleaseMemObject(d_outData_0);
   if (d_outData_1) 
@@ -1301,7 +1294,6 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
   if(store2_kernel) 
     clReleaseKernel(store2_kernel);  
 
-  printf("Freed all kernels\n");
   fft_time.valid = 1;
   return fft_time;
 }

@@ -60,7 +60,7 @@ bool fft_create_data(double2 *inp, int N){
  * \param  sp: 1, single precision floating point transformation
  * \param  use_bram: 1 if transpose uses BRAM, not DDR (valid for 2d and 3d FFT)
  */
-void print_config(int N, int dim, int iter, int inv, int sp, int use_bram){
+void print_config(int N, int dim, int iter, int inv, int sp, int batch, int use_bram){
   printf("\n------------------------------------------\n");
   printf("FFT Configuration: \n");
   printf("--------------------------------------------\n");
@@ -69,6 +69,7 @@ void print_config(int N, int dim, int iter, int inv, int sp, int use_bram){
   printf("Precision          = %s \n",  sp==1 ? "Single": "Double");
   printf("Direction          = %s \n", inv ? "Backward":"Forward");
   printf("Placement          = In Place    \n");
+  printf("Batch              = %d \n", batch);
   printf("Iterations         = %d \n", iter);
   printf("Transpose          = %s \n", use_bram ? "BRAM":"DDR");
   printf("--------------------------------------------\n\n");

@@ -34,7 +34,6 @@ bool check_valid_svm_device(cl_device_id device){
     &sz_return
   );
   checkError(status, "Failed to get device info");
-  printf("SVM capabilities: %lu, size %lu \n", caps, sz_return);
  
   if (caps && CL_DEVICE_SVM_COARSE_GRAIN_BUFFER){
     return true;

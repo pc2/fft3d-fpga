@@ -12,13 +12,14 @@
  * \param fftw_data: pointer to fft3d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT3d
  * \param inverse: 1 if inverse
+ * \param how_many: batch, default is 1 
  * \return true if verification passed
  */
 bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse, int how_many){
 
   // Copy inp data to verify using FFTW
   // requires allocating data specifically for FFTW computation
-  size_t num_pts = N * N * N;
+  size_t num_pts = how_many * N * N * N;
   fftwf_complex *fftw_data = fftwf_alloc_complex(num_pts);
 
   for(size_t i = 0; i < num_pts; i++){
@@ -29,12 +30,19 @@ bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse, i
   // Compute 3d FFT using FFTW
   // Create Plan using simple heuristic and in place FFT
   fftwf_plan plan;
+  int rank = 3;
+  const int n[] = {N, N, N};
+  int howmany = how_many;
+  int idist = N*N*N, odist = N*N*N;
+  int istride = 1, ostride = 1; // contiguous in memory
 
   if(inverse){
-    plan = fftwf_plan_dft_3d( N, N, N, &fftw_data[0], &fftw_data[0], FFTW_BACKWARD, FFTW_ESTIMATE);
+    plan = fftwf_plan_many_dft(rank, n, howmany, &fftw_data[0], NULL, istride, idist, fftw_data, NULL, ostride, odist, FFTW_BACKWARD, FFTW_ESTIMATE);
+    //plan = fftwf_plan_dft_3d( N, N, N, &fftw_data[0], &fftw_data[0], FFTW_BACKWARD, FFTW_ESTIMATE);
   }
   else{
-    plan = fftwf_plan_dft_3d( N, N, N, &fftw_data[0], &fftw_data[0], FFTW_FORWARD, FFTW_ESTIMATE);
+    plan = fftwf_plan_many_dft(rank, n, howmany, &fftw_data[0], NULL, istride, idist, fftw_data, NULL, ostride, odist, FFTW_FORWARD, FFTW_ESTIMATE);
+    //plan = fftwf_plan_dft_3d( N, N, N, &fftw_data[0], &fftw_data[0], FFTW_FORWARD, FFTW_ESTIMATE);
   }
 
   // Execute in place FFTW based on plan created
@@ -54,7 +62,7 @@ bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse, i
     mag_sum += magnitude;
     noise_sum += noise;
 #ifndef NDEBUG
-    //printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
+    printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif            
   }
 

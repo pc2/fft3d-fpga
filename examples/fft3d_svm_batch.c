@@ -35,7 +35,7 @@ int main(int argc, const char **argv) {
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
-    OPT_BOOLEAN('c',"batch", &batch, "Batch"),
+    OPT_INTEGER('c',"batch", &batch, "Batch"),
     OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
@@ -49,7 +49,7 @@ int main(int argc, const char **argv) {
   argc = argparse_parse(&argparse, argc, argv);
 
   // Print to console the configuration chosen to execute during runtime
-  print_config(N, dim, iter, inv, sp, use_bram);
+  print_config(N, dim, iter, inv, sp, batch, use_bram);
 
   if(use_emulator){
     platform = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
@@ -92,35 +92,12 @@ int main(int argc, const char **argv) {
       total_api_time += getTimeinMilliseconds() - temp_timer;
 
 #ifdef USE_FFTW
-      printf("FFTW Validation\n");
-      if(!verify_sp_fft3d_fftw(out, inp, N, inv, 1)){
+      if(!verify_sp_fft3d_fftw(out, inp, N, inv, batch)){
         fprintf(stderr, "3d FFT Verification Failed \n");
         free(inp);
         free(out);
         return EXIT_FAILURE;
       }
-
-      size_t inp_test_sz = sizeof(float2) * N * N * N;
-      float2 *inp_test = (float2*)fftfpgaf_complex_malloc(inp_test_sz);
-      float2 *out_test = (float2*)fftfpgaf_complex_malloc(inp_test_sz);
-      
-      size_t str = N * N * N;
-      for(size_t i = 0; i < (N*N*N); i++){
-        inp_test[i].x = inp[str + i].x;
-        inp_test[i].y = inp[str + i].y;
-        
-        out_test[i].x = out[str + i].x;
-        out_test[i].y = out[str + i].y;
-      }
-
-      if(!verify_sp_fft3d_fftw(out_test, inp_test, N, inv, 1)){
-        fprintf(stderr, "3d FFT Verification Failed for second batch\n");
-        free(inp_test);
-        free(out_test);
-        return EXIT_FAILURE;
-      }
-      free(inp_test);
-      free(out_test);
 #endif
       if(timing.valid == 0){
         fprintf(stderr, "Invalid execution, timing found to be 0");
