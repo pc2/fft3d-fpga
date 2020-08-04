@@ -7,7 +7,9 @@
 #define POINTS @POINTS@
 
 #define LOGN @LOG_FFT_SIZE@
-#define FFT_SIZE @FFT_SIZE@ 
+#define N @FFT_SIZE@ 
+
+#define DEPTH @DEPTH@
 
 #define BUFFER_LOCATION "@BUFFER_LOCATION@"
 

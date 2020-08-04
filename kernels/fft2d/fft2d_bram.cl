@@ -25,7 +25,6 @@ int bit_reversed(int x, int bits) {
 
 // Kernel that fetches data from global memory 
 kernel void fetch(global volatile float2 * restrict src) {
-  const unsigned N = (1 << LOGN);
 
   for(unsigned k = 0; k < N; k++){ 
     float2 buf[N];
@@ -53,7 +52,6 @@ kernel void fetch(global volatile float2 * restrict src) {
  */
 
 kernel void fft2da(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -102,8 +100,6 @@ kernel void fft2da(int inverse) {
 
 // Transposes fetched data; stores them to global memory
 kernel void transpose(){
-
-  const unsigned N = (1 << LOGN);
   unsigned revcolt, where, where_write;
 
   local float2 buf[N * N];
@@ -139,8 +135,6 @@ kernel void transpose(){
 }
 
 kernel void fft2db(int inverse) {
-  const int N = (1 << LOGN);
-
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
    * every iteration; all loop dependencies derived from the uses of this 
@@ -185,7 +179,6 @@ kernel void fft2db(int inverse) {
 }
 
 kernel void store(global volatile float2 * restrict dest){
-  const unsigned N = (1 << LOGN);
   unsigned revcolt, where;
 
   local float2 buf[N * N];

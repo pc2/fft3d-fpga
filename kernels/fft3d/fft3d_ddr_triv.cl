@@ -28,7 +28,6 @@ int bit_reversed(int x, int bits) {
 
 // Kernel that fetches data from global memory 
 kernel void fetch1(global volatile float2 * restrict src1) {
-  const unsigned N = (1 << LOGN);
 
   for(unsigned k = 0; k < (N * N); k++){ 
     float2 buf[N];
@@ -56,7 +55,6 @@ kernel void fetch1(global volatile float2 * restrict src1) {
  */
 
 kernel void fft3da(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -108,7 +106,6 @@ kernel void fft3da(int inverse) {
 // Transposes fetched data; stores them to global memory
 kernel void transpose(){
 
-  const unsigned N = (1 << LOGN);
   unsigned revcolt, where, where_write;
 
   local float2 buf[N * N];
@@ -151,7 +148,6 @@ kernel void transpose(){
 }
 
 kernel void fft3db(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -204,7 +200,6 @@ kernel void fft3db(int inverse) {
 __kernel 
 void store1(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict dest1){ 
             
-  const unsigned N = (1 << LOGN);
   local float2 buf[N * N];
 
   for(unsigned zdim = 0; zdim < N; zdim++){
@@ -243,7 +238,6 @@ void store1(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile 
 __kernel
 void fetch2(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict src2){
      
-  const unsigned N = (1 << LOGN);
   local float2 buf[N * N];
 
   for(unsigned ydim = 0; ydim < N; ydim++){
@@ -284,7 +278,6 @@ void fetch2(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile 
  * Input and output data in bit-reversed format
  */
 kernel void fft3dc(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -336,8 +329,6 @@ kernel void fft3dc(int inverse) {
  *  - values in the z axis is in bitreversed format
  */ 
 kernel void store2(global float2 * restrict dest2){
-
-  const unsigned N = (1 << LOGN);
 
   local float2 buf[N * N];
 

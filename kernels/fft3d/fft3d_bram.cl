@@ -24,7 +24,7 @@ int bit_reversed(int x, int bits) {
   return y;
 }
 
-void sendTofft(float2 *buffer, const unsigned N, unsigned j){
+void sendTofft(float2 *buffer, unsigned j){
   write_channel_intel(chaninfft[0], buffer[j]);               // 0
   write_channel_intel(chaninfft[1], buffer[4 * N / 8 + j]);   // 32
   write_channel_intel(chaninfft[2], buffer[2 * N / 8 + j]);   // 16
@@ -37,7 +37,6 @@ void sendTofft(float2 *buffer, const unsigned N, unsigned j){
 
 // Kernel that fetches data from global memory 
 kernel void fetch(global volatile float2 * restrict src) {
-  const unsigned N = (1 << LOGN);
 
   for(unsigned k = 0; k < (1 << (LOGN + LOGN)); k++){ 
 
@@ -48,7 +47,7 @@ kernel void fetch(global volatile float2 * restrict src) {
     }
 
     for(unsigned j = 0; j < (N / 8); j++){
-      sendTofft(&buf[0], N, j);
+      sendTofft(&buf[0], j);
     }
   }
 
@@ -68,7 +67,7 @@ kernel void fetch(global volatile float2 * restrict src) {
     }
 
     for(unsigned j = 0; j < (N / 8); j++){
-      sendTofft(&buf[0], N, j);
+      sendTofft(&buf[0], j);
     }
   }
 }
@@ -78,7 +77,6 @@ kernel void fetch(global volatile float2 * restrict src) {
  */
 
 kernel void fft3da(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -130,7 +128,6 @@ kernel void fft3da(int inverse) {
 // Transposes fetched data; stores them to global memory
 kernel void transpose(global float2 * restrict dest) {
 
-  const unsigned N = (1 << LOGN);
   unsigned revcolt, where_read, where_write, where;
 
   local float2 buf[N * N];
@@ -203,7 +200,6 @@ kernel void transpose(global float2 * restrict dest) {
 }
 
 kernel void fft3db(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -253,7 +249,6 @@ kernel void fft3db(int inverse) {
 
 // Stores data for 3rd dim FFT 
 kernel void transpose3d(){
-  const unsigned N = (1 << LOGN);
   unsigned revcolt, where;
   unsigned where_test;
 
