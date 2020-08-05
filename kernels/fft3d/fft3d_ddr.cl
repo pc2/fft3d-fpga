@@ -168,42 +168,40 @@ kernel void fft3db(int inverse) {
    */
 
   float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
-  for( int j = 0; j < N; j++){
 
-      for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
-        float2x8 data;
+  #pragma loop_coalesce
+  for(unsigned j = 0; j < N; j++){
+    for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
+      float2x8 data;
 
-        // Read data from channels
-        if (i < N * (N / POINTS)) {
-          data.i0 = read_channel_intel(chaninfft3db[0]);
-          data.i1 = read_channel_intel(chaninfft3db[1]);
-          data.i2 = read_channel_intel(chaninfft3db[2]);
-          data.i3 = read_channel_intel(chaninfft3db[3]);
-          data.i4 = read_channel_intel(chaninfft3db[4]);
-          data.i5 = read_channel_intel(chaninfft3db[5]);
-          data.i6 = read_channel_intel(chaninfft3db[6]);
-          data.i7 = read_channel_intel(chaninfft3db[7]);
-        } else {
-          data.i0 = data.i1 = data.i2 = data.i3 = 
-                    data.i4 = data.i5 = data.i6 = data.i7 = 0;
-        }
-
-        // Perform one FFT step
-        data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
-
-        // Write result to channels
-        if (i >= N / POINTS - 1) {
-          write_channel_intel(chaninTranStore1[0], data.i0);
-          write_channel_intel(chaninTranStore1[1], data.i1);
-          write_channel_intel(chaninTranStore1[2], data.i2);
-          write_channel_intel(chaninTranStore1[3], data.i3);
-          write_channel_intel(chaninTranStore1[4], data.i4);
-          write_channel_intel(chaninTranStore1[5], data.i5);
-          write_channel_intel(chaninTranStore1[6], data.i6);
-          write_channel_intel(chaninTranStore1[7], data.i7);
-        }
+      if (i < N * (N / POINTS)) {
+        data.i0 = read_channel_intel(chaninfft3db[0]);
+        data.i1 = read_channel_intel(chaninfft3db[1]);
+        data.i2 = read_channel_intel(chaninfft3db[2]);
+        data.i3 = read_channel_intel(chaninfft3db[3]);
+        data.i4 = read_channel_intel(chaninfft3db[4]);
+        data.i5 = read_channel_intel(chaninfft3db[5]);
+        data.i6 = read_channel_intel(chaninfft3db[6]);
+        data.i7 = read_channel_intel(chaninfft3db[7]);
+      } else {
+        data.i0 = data.i1 = data.i2 = data.i3 = 
+                  data.i4 = data.i5 = data.i6 = data.i7 = 0;
       }
-   }
+
+      data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
+
+      if (i >= N / POINTS - 1) {
+        write_channel_intel(chaninTranStore1[0], data.i0);
+        write_channel_intel(chaninTranStore1[1], data.i1);
+        write_channel_intel(chaninTranStore1[2], data.i2);
+        write_channel_intel(chaninTranStore1[3], data.i3);
+        write_channel_intel(chaninTranStore1[4], data.i4);
+        write_channel_intel(chaninTranStore1[5], data.i5);
+        write_channel_intel(chaninTranStore1[6], data.i6);
+        write_channel_intel(chaninTranStore1[7], data.i7);
+      }
+    }
+  }
 }
 
 __attribute__((max_global_work_dim(0)))
@@ -319,42 +317,43 @@ kernel void fft3dc(int inverse) {
    */
 
   float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
-  for( int j = 0; j < N; j++){
 
-      for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
-        float2x8 data;
+  #pragma loop_coalesce
+  for(unsigned j = 0; j < N; j++){
 
-        // Read data from channels
-        if (i < N * (N / POINTS)) {
-          data.i0 = read_channel_intel(chaninfft3dc[0]);
-          data.i1 = read_channel_intel(chaninfft3dc[1]);
-          data.i2 = read_channel_intel(chaninfft3dc[2]);
-          data.i3 = read_channel_intel(chaninfft3dc[3]);
-          data.i4 = read_channel_intel(chaninfft3dc[4]);
-          data.i5 = read_channel_intel(chaninfft3dc[5]);
-          data.i6 = read_channel_intel(chaninfft3dc[6]);
-          data.i7 = read_channel_intel(chaninfft3dc[7]);
-        } else {
-          data.i0 = data.i1 = data.i2 = data.i3 = 
-                    data.i4 = data.i5 = data.i6 = data.i7 = 0;
-        }
+    for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
+      float2x8 data;
 
-        // Perform one FFT step
-        data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
-
-        // Write result to channels
-        if (i >= N / POINTS - 1) {
-          write_channel_intel(chaninTranStore2[0], data.i0);
-          write_channel_intel(chaninTranStore2[1], data.i1);
-          write_channel_intel(chaninTranStore2[2], data.i2);
-          write_channel_intel(chaninTranStore2[3], data.i3);
-          write_channel_intel(chaninTranStore2[4], data.i4);
-          write_channel_intel(chaninTranStore2[5], data.i5);
-          write_channel_intel(chaninTranStore2[6], data.i6);
-          write_channel_intel(chaninTranStore2[7], data.i7);
-        }
+      if (i < N * (N / POINTS)) {
+        data.i0 = read_channel_intel(chaninfft3dc[0]);
+        data.i1 = read_channel_intel(chaninfft3dc[1]);
+        data.i2 = read_channel_intel(chaninfft3dc[2]);
+        data.i3 = read_channel_intel(chaninfft3dc[3]);
+        data.i4 = read_channel_intel(chaninfft3dc[4]);
+        data.i5 = read_channel_intel(chaninfft3dc[5]);
+        data.i6 = read_channel_intel(chaninfft3dc[6]);
+        data.i7 = read_channel_intel(chaninfft3dc[7]);
+      } else {
+        data.i0 = data.i1 = data.i2 = data.i3 = 
+                  data.i4 = data.i5 = data.i6 = data.i7 = 0;
       }
-   }
+
+      // Perform one FFT step
+      data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
+
+      // Write result to channels
+      if (i >= N / POINTS - 1) {
+        write_channel_intel(chaninTranStore2[0], data.i0);
+        write_channel_intel(chaninTranStore2[1], data.i1);
+        write_channel_intel(chaninTranStore2[2], data.i2);
+        write_channel_intel(chaninTranStore2[3], data.i3);
+        write_channel_intel(chaninTranStore2[4], data.i4);
+        write_channel_intel(chaninTranStore2[5], data.i5);
+        write_channel_intel(chaninTranStore2[6], data.i6);
+        write_channel_intel(chaninTranStore2[7], data.i7);
+      }
+    }
+  }
 }
 
 __attribute__((max_global_work_dim(0)))
