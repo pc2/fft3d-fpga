@@ -1,5 +1,33 @@
 // Authors: Tobias Kenter, Arjun Ramaswami
 
+float2x8 bitreverse_fetch(float2x8 data, float2 bitrev_outA[N], float2 bitrev_outB[N], unsigned row){
+
+  const unsigned STEPS = (1 << (LOGN - LOGPOINTS));
+  unsigned index = (row & (STEPS - 1)) * 8;
+
+  bitrev_outA[index + 0] = data.i0;
+  bitrev_outA[index + 1] = data.i1;
+  bitrev_outA[index + 2] = data.i2;
+  bitrev_outA[index + 3] = data.i3;
+  bitrev_outA[index + 4] = data.i4;
+  bitrev_outA[index + 5] = data.i5;
+  bitrev_outA[index + 6] = data.i6;
+  bitrev_outA[index + 7] = data.i7;
+
+  unsigned index_out = (row & (STEPS - 1));
+  float2x8 rotate_out;
+  rotate_out.i0 = bitrev_outB[index_out]; 
+  rotate_out.i1 = bitrev_outB[(4 * N / 8) + index_out];
+  rotate_out.i2 = bitrev_outB[(2 * N / 8) + index_out];
+  rotate_out.i3 = bitrev_outB[(6 * N / 8) + index_out];
+  rotate_out.i4 = bitrev_outB[(N / 8) + index_out];
+  rotate_out.i5 = bitrev_outB[(5 * N / 8) + index_out];
+  rotate_out.i6 = bitrev_outB[(3 * N / 8) + index_out];
+  rotate_out.i7 = bitrev_outB[(7 * N / 8) + index_out];
+
+  return rotate_out;
+}
+
 float2x8 bitreverse_out(float2 bitrev_outA[N], float2 bitrev_outB[N], float2x8 data, unsigned row){
   float2 rotate_in[POINTS];
 
