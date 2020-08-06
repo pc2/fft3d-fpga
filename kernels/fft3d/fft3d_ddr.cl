@@ -118,8 +118,10 @@ kernel void transpose() {
   bool is_bufA = false, is_bitrevA = false;
 
   float2 buf[2][DEPTH][POINTS];
-  float2 bitrev_in[2][N], bitrev_out[2][N] ;
-  //float2 bitrev_in[2][N] __attribute__((memory("MLAB")));
+  //float2 bitrev_in[2][N], bitrev_out[2][N];
+  //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  float2 bitrev_in[2][N];
+  float2 __attribute__((memory, numbanks(8))) bitrev_out[2][N];
   
   int initial_delay = DELAY + DELAY; // for each of the bitrev buffer
 
@@ -234,7 +236,8 @@ kernel void transposeStore1(global float2 * restrict dest) {
   bool is_bufA = false, is_bitrevA = false;
 
   float2 buf[2][DEPTH][POINTS];
-  float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  float2 bitrev_in[2][N];
   
   int initial_delay = DELAY; // for each of the bitrev buffer
   // additional iterations to fill the buffers
@@ -289,43 +292,77 @@ kernel void transposeStore1(global float2 * restrict dest) {
     }
   }
 }
+__attribute__((max_global_work_dim(0)))
+kernel void fetchBitrev2(global float2 * restrict src) {
+  unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
 
-// Kernel that fetches data from global memory 
-kernel void fetchBitrev2(global volatile float2 * restrict src) {
-  local float2 buf[N * N];
+  bool is_bufA = false, is_bitrevA = false;
+  float2 __attribute__((memory, numbanks(8))) bitrev_out[2][N];
+  float2 buf[2][DEPTH][POINTS];
+  
+  // additional iterations to fill the buffers
+  for(unsigned step = 0; step < (N * DEPTH) + DEPTH + delay; step++){
+    // increment z by 1 every N/8 steps until (N*N/ 8)
+    unsigned start_index = step + delay;
+    unsigned zdim = (step >> (LOGN - LOGPOINTS)) & (N - 1); 
 
-  for(unsigned ydim = 0; ydim < N; ydim++){
-    /*
-     * Store xz plane in the buffer
-     */
-    for(unsigned i = 0; i < N; i++){
-      unsigned ddr_loc = ( (i * N * N) + (ydim * N) );
+    // increment y by 1 every N*N/8 points until N
+    unsigned ydim = (step >> (LOGN + LOGN - LOGPOINTS)) & (N - 1);
 
-      #pragma unroll 8
-      for(unsigned xdim = 0; xdim < N; xdim++){
-        buf[(i * N) + xdim] = src[ddr_loc + xdim];
-      }
+    // increment by 8 until N / 8
+    unsigned xdim = (step * 8) & (N - 1);
+
+    // increment by 1 every N*N*N / 8 steps
+    unsigned batch_index = (step >> (LOGN + LOGN + LOGN - LOGPOINTS));
+
+    unsigned index = (batch_index * N * N * N) + (zdim * N * N) + (ydim * N) + xdim; 
+
+    float2x8 data, data_out;
+    if (step < (N * DEPTH)) {
+      data.i0 = src[index + 0];
+      data.i1 = src[index + 1];
+      data.i2 = src[index + 2];
+      data.i3 = src[index + 3];
+      data.i4 = src[index + 4];
+      data.i5 = src[index + 5];
+      data.i6 = src[index + 6];
+      data.i7 = src[index + 7];
+    } else {
+      data.i0 = data.i1 = data.i2 = data.i3 = 
+                data.i4 = data.i5 = data.i6 = data.i7 = 0;
     }
+  
+    is_bufA = (( step & (DEPTH - 1)) == 0) ? !is_bufA: is_bufA;
 
-    /* Transpose xz plane i.e. zx
-     * Transfer bit reverse input to FFT
-     */
-    for(unsigned i = 0; i < N; i++){
+    // Swap bitrev buffers every N/8 iterations
+    is_bitrevA = ( (step & ((N / 8) - 1)) == 0) ? !is_bitrevA: is_bitrevA;
 
-      for(unsigned k = 0; k < (N / 8); k++){
-        unsigned where = i + (k * N);
+    writeBuf(data,
+      is_bufA ? buf[0] : buf[1],
+      step, 0);
 
-        write_channel_intel(chaninfft3dc[0], buf[where]); 
-        write_channel_intel(chaninfft3dc[1], buf[where + 4 * (N / 8) * N]);
-        write_channel_intel(chaninfft3dc[2], buf[where + 2 * (N / 8) * N]);
-        write_channel_intel(chaninfft3dc[3], buf[where + 6 * (N / 8) * N]);
-        write_channel_intel(chaninfft3dc[4], buf[where + (N / 8) * N]); 
-        write_channel_intel(chaninfft3dc[5], buf[where + 5 * (N / 8) * N]);
-        write_channel_intel(chaninfft3dc[6], buf[where + 3 * (N / 8) * N]);
-        write_channel_intel(chaninfft3dc[7], buf[where + 7 * (N / 8) * N]);
-      }
+    data_out = readBuf_fetch(
+      is_bufA ? buf[1] : buf[0], 
+      step, 0);
+
+    unsigned start_row = step & (DEPTH -1);
+    data_out = bitreverse_out(
+      is_bitrevA ? bitrev_out[0] : bitrev_out[1],
+      is_bitrevA ? bitrev_out[1] : bitrev_out[0],
+      data_out, start_row);
+
+    if (step >= (DEPTH + delay)) {
+
+      write_channel_intel(chaninfft3dc[0], data_out.i0);
+      write_channel_intel(chaninfft3dc[1], data_out.i1);
+      write_channel_intel(chaninfft3dc[2], data_out.i2);
+      write_channel_intel(chaninfft3dc[3], data_out.i3);
+      write_channel_intel(chaninfft3dc[4], data_out.i4);
+      write_channel_intel(chaninfft3dc[5], data_out.i5);
+      write_channel_intel(chaninfft3dc[6], data_out.i6);
+      write_channel_intel(chaninfft3dc[7], data_out.i7);
     }
-  } // y axis
+  }
 }
 
 /*
@@ -386,7 +423,8 @@ kernel void transposeStore2(global float2 * restrict dest) {
   bool is_bufA = false, is_bitrevA = false;
 
   float2 buf[2][DEPTH][POINTS];
-  float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  float2 bitrev_in[2][N];
+  //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
   
   int initial_delay = DELAY; // for each of the bitrev buffer
   // additional iterations to fill the buffers
@@ -447,8 +485,6 @@ kernel void transposeStore2(global float2 * restrict dest) {
       //unsigned batch_index = 0;
 
       unsigned index = (batch_index * N * N * N) + (zdim * N * N) + (ydim * N) + xdim; 
-
-      //printf("start_index: %u, batch: %u, zim: %u, ydim: %u, xdim: %u, index: %u \n", start_index, batch_index, zdim, ydim, xdim, index);
 
       dest[index + 0] = data_out.i0;
       dest[index + 1] = data_out.i1;
