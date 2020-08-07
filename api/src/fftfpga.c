@@ -1056,7 +1056,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
   int inverse_int = inv;
 
   // Setup kernels
-  cl_kernel fetch1_kernel = clCreateKernel(program, "fetch1", &status);
+  cl_kernel fetch1_kernel = clCreateKernel(program, "fetchBitrev1", &status);
   checkError(status, "Failed to create fetch1 kernel");
   cl_kernel ffta_kernel = clCreateKernel(program, "fft3da", &status);
   checkError(status, "Failed to create fft3da kernel");
@@ -1064,14 +1064,14 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, i
   checkError(status, "Failed to create transpose kernel");
   cl_kernel fftb_kernel = clCreateKernel(program, "fft3db", &status);
   checkError(status, "Failed to create fft3db kernel");
-  cl_kernel store1_kernel = clCreateKernel(program, "store1", &status);
+  cl_kernel store1_kernel = clCreateKernel(program, "transposeStore1", &status);
   checkError(status, "Failed to create store1 kernel");
 
-  cl_kernel fetch2_kernel = clCreateKernel(program, "fetch2", &status);
+  cl_kernel fetch2_kernel = clCreateKernel(program, "fetchBitrev2", &status);
   checkError(status, "Failed to create fetch2 kernel");
   cl_kernel fftc_kernel = clCreateKernel(program, "fft3dc", &status);
   checkError(status, "Failed to create fft3dc kernel");
-  cl_kernel store2_kernel = clCreateKernel(program, "store2", &status);
+  cl_kernel store2_kernel = clCreateKernel(program, "transposeStore2", &status);
   checkError(status, "Failed to create store2 kernel");
 
   // Setup Queues to the kernels

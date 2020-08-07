@@ -119,6 +119,11 @@ int main(int argc, const char **argv) {
       avg_wr += timing.pcie_write_t;
       avg_exec += timing.exec_t;
 
+      printf("Iter: %lu\n", i);
+      printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
+      printf("\tKernel: %lfms\n", timing.exec_t);
+      printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
+             
       // destroy FFT input and output
       free(inp);
       free(out);

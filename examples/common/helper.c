@@ -115,11 +115,14 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   printf("Points             = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
   printf("Precision          = %s\n",  sp==1 ? "Single": "Double");
   printf("Direction          = %s\n", inv ? "Backward":"Forward");
+  printf("Iterations         = %d\n", iter);
+  printf("%s", iter>1 ? "Average Measurements\n":"");
   printf("PCIe Write         = %.2lfms\n", pcie_write);
   printf("Kernel Execution   = %.2lfms\n", exec);
   printf("PCIe Read          = %.2lfms\n", pcie_read);
+  printf("Total              = %.2lfms\n", pcie_read + exec + pcie_write);
   printf("Throughput         = %.2lfGFLOPS/s | %.2lf GB/s\n", gflops, gBytes_per_sec);
-  printf("Avg API runtime    = %.2lfms\n", avg_api_time);
+  printf("API runtime        = %.2lfms\n", avg_api_time);
 }
 
 /**

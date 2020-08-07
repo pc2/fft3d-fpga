@@ -230,7 +230,7 @@ kernel void fft3db(int inverse) {
 }
 
 __attribute__((max_global_work_dim(0)))
-kernel void transposeStore1(global float2 * restrict dest) {
+kernel void transposeStore1(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict dest) {
 
   const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bufA = false, is_bitrevA = false;
@@ -293,7 +293,7 @@ kernel void transposeStore1(global float2 * restrict dest) {
   }
 }
 __attribute__((max_global_work_dim(0)))
-kernel void fetchBitrev2(global float2 * restrict src) {
+kernel void fetchBitrev2(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict src) {
   unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
 
   bool is_bufA = false, is_bitrevA = false;
