@@ -84,7 +84,7 @@ int main(int argc, const char **argv) {
       if(use_bram == 1){
         // use bram for 2d Transpose
         temp_timer = getTimeinMilliseconds();
-        timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv, interleaving);
+        timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv, interleaving, batch);
         total_api_time += getTimeinMilliseconds() - temp_timer;
       }
       else{

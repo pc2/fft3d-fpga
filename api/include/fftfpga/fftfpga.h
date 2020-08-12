@@ -96,9 +96,10 @@ extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter
  * @param  out  : float2 pointer to output data of size [N * N]
  * @param  inv  : int toggle to activate backward FFT
  * @param  interleaving : 1 if interleaved global memory buffers
+ * @param  how_many : number of 2D FFTs to computer, default 1
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving);
+extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving, int how_many);
 
 /**
  * @brief  compute an out-of-place single precision complex 2D-FFT using the DDR of the FPGA

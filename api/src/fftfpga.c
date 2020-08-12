@@ -506,14 +506,14 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv){
  * \param  interleaving : 1 if interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving){
+fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving, int how_many){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel ffta_kernel = NULL, fftb_kernel = NULL;
   cl_kernel fetch_kernel = NULL, store_kernel = NULL;
-  cl_kernel transpose_kernel1 = NULL, transpose_kernel2 = NULL;
+  cl_kernel transpose_kernel = NULL;
 
   cl_int status = 0;
-  int num_pts = N * N;
+  int num_pts = how_many * N * N;
 
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
@@ -535,6 +535,7 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interl
     flagbuf1 = CL_MEM_WRITE_ONLY | CL_CHANNEL_1_INTELFPGA;
     flagbuf2 = CL_MEM_READ_ONLY | CL_CHANNEL_2_INTELFPGA;
   }
+  
   // Device memory buffers
   cl_mem d_inData, d_outData;
   d_inData = clCreateBuffer(context, flagbuf1, sizeof(float2) * num_pts, NULL, &status);
@@ -559,28 +560,44 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interl
 
   ffta_kernel = clCreateKernel(program, "fft2da", &status);
   checkError(status, "Failed to create fft2da kernel");
+
   fftb_kernel = clCreateKernel(program, "fft2db", &status);
   checkError(status, "Failed to create fft2db kernel");
 
-  fetch_kernel = clCreateKernel(program, "fetchBitrev1", &status);
+  fetch_kernel = clCreateKernel(program, "fetchBitrev", &status);
   checkError(status, "Failed to create fetch kernel");
 
-  transpose_kernel1 = clCreateKernel(program, "transpose1", &status);
+  transpose_kernel = clCreateKernel(program, "transpose", &status);
   checkError(status, "Failed to create transpose1 kernel");
 
-  transpose_kernel2 = clCreateKernel(program, "transpose2", &status);
-  checkError(status, "Failed to create transpose2 kernel");
-
-  store_kernel = clCreateKernel(program, "store", &status);
+  store_kernel = clCreateKernel(program, "transposeStore", &status);
   checkError(status, "Failed to create store kernel");
 
   status = clSetKernelArg(fetch_kernel, 0, sizeof(cl_mem), (void *)&d_inData);
-  checkError(status, "Failed to set fetch kernel arg");
+  checkError(status, "Failed to set fetch kernel arg 0");
+
+  status = clSetKernelArg(fetch_kernel, 1, sizeof(cl_int), (void *)&how_many);
+  checkError(status, "Failed to set fetch kernel arg 1");
+
   status = clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-  checkError(status, "Failed to set ffta kernel arg");
+  checkError(status, "Failed to set ffta kernel arg 0");
+
+  status = clSetKernelArg(ffta_kernel, 1, sizeof(cl_int), (void*)&how_many);
+  checkError(status, "Failed to set ffta kernel arg 1");
+
+  status = clSetKernelArg(transpose_kernel, 0, sizeof(cl_int), (void*)&how_many);
+  checkError(status, "Failed to set transpose kernel arg 0");
+
   status = clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-  checkError(status, "Failed to set fftb kernel arg");
+  checkError(status, "Failed to set fftb kernel arg 0");
+
+  status = clSetKernelArg(fftb_kernel, 1, sizeof(cl_int), (void*)&how_many);
+  checkError(status, "Failed to set fftb kernel arg 1");
+
   status = clSetKernelArg(store_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+  checkError(status, "Failed to set store kernel arg");
+
+  status = clSetKernelArg(store_kernel, 1, sizeof(cl_int), (void *)&how_many);
   checkError(status, "Failed to set store kernel arg");
 
   fft_time.exec_t = getTimeinMilliSec();
@@ -590,31 +607,26 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interl
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue3, transpose_kernel1, 0, NULL, NULL);
+  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose1 kernel");
 
   status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch second fft kernel");
 
-  status = clEnqueueTask(queue5, transpose_kernel2, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose2 kernel");
-
-  status = clEnqueueTask(queue6, store_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue5, store_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch store kernel");
 
   // Wait for all command queues to complete pending events
   status = clFinish(queue1);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue1");
   status = clFinish(queue2);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue2");
   status = clFinish(queue3);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue3");
   status = clFinish(queue4);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue4");
   status = clFinish(queue5);
-  checkError(status, "failed to finish");
-  status = clFinish(queue5);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue5");
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
   // Copy results from device to host
@@ -638,11 +650,8 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interl
   if(fftb_kernel) 
     clReleaseKernel(fftb_kernel);  
 
-  if(transpose_kernel1) 
-    clReleaseKernel(transpose_kernel1);  
-
-  if(transpose_kernel2) 
-    clReleaseKernel(transpose_kernel2);  
+  if(transpose_kernel) 
+    clReleaseKernel(transpose_kernel);  
 
   if(store_kernel) 
     clReleaseKernel(store_kernel);  
