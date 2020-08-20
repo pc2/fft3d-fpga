@@ -121,7 +121,7 @@ int main(int argc, const char **argv) {
   fpga_final();
 
   // display performance measures
-  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
+  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;
 }

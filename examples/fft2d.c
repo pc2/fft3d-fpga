@@ -113,6 +113,11 @@ int main(int argc, const char **argv) {
       avg_wr += timing.pcie_write_t;
       avg_exec += timing.exec_t;
 
+      printf("Iter: %lu\n", i);
+      printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
+      printf("\tKernel: %lfms\n", timing.exec_t);
+      printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
+
       // destroy FFT input and output
       free(inp);
       free(out);
@@ -123,7 +128,7 @@ int main(int argc, const char **argv) {
   fpga_final();
 
   // display performance measures
-  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
+  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;
 }

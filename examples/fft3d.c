@@ -79,7 +79,6 @@ int main(int argc, const char **argv) {
       float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
       status = fftf_create_data(inp, N * N * N);
-      printf("\n\n");
       if(!status){
         fprintf(stderr, "Error in Data Creation \n");
         free(inp);
@@ -134,7 +133,7 @@ int main(int argc, const char **argv) {
   fpga_final();
 
   // display performance measures
-  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, inv, sp);
+  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;
 }
