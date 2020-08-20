@@ -190,6 +190,9 @@ fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int batch){
 
   status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(double2) * N * batch, inp, 0, NULL, NULL);
 
+  status = clFinish(queue1);
+  checkError(status, "failed to finish writing buffer using PCIe");
+
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
 
@@ -241,6 +244,10 @@ fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int batch){
   // Copy results from device to host
   fft_time.pcie_read_t = getTimeinMilliSec();
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * batch, out, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish reading buffer using PCIe");
+
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
@@ -299,6 +306,9 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int batch){
 
   status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * batch, inp, 0, NULL, NULL);
 
+  status = clFinish(queue1);
+  checkError(status, "failed to finish writing buffer using PCIe");
+
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
 
@@ -350,6 +360,10 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int batch){
   // Copy results from device to host
   fft_time.pcie_read_t = getTimeinMilliSec();
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * batch, out, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish reading buffer using PCIe");
+
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
@@ -407,6 +421,9 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv){
   fft_time.pcie_write_t = getTimeinMilliSec();
 
   status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * N, inp, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish writing buffer using PCIe");
 
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
@@ -470,6 +487,10 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv){
   // Copy results from device to host
   fft_time.pcie_read_t = getTimeinMilliSec();
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N, out, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish reading buffer using PCIe");
+
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
@@ -627,6 +648,10 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interl
   // Copy results from device to host
   fft_time.pcie_read_t = getTimeinMilliSec();
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish reading buffer using PCIe");
+
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
@@ -790,6 +815,10 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int interl
   // Copy results from device to host
   fft_time.pcie_read_t = getTimeinMilliSec();
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N * N, out, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish reading buffer using PCIe");
+
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
 
@@ -1036,6 +1065,10 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
     // Copy results from device to host
     fft_time.pcie_read_t = getTimeinMilliSec();
     status = clEnqueueReadBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, NULL);
+    
+    status = clFinish(queue1);
+    checkError(status, "failed to finish reading DDR using PCIe");
+
     fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
     checkError(status, "Failed to copy data from device");
   }

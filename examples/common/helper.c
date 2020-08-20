@@ -85,7 +85,7 @@ void print_config(int N, int dim, int iter, int inv, int sp, int batch, int use_
  * \param  inv: 1 if backward transform
  * \param  single precision floating point transformation
  */
-void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int inv, int sp){
+void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int batch, int inv, int sp){
 
   double avg_api_time = 0.0;
 
@@ -116,7 +116,9 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   printf("Precision          = %s\n",  sp==1 ? "Single": "Double");
   printf("Direction          = %s\n", inv ? "Backward":"Forward");
   printf("Iterations         = %d\n", iter);
-  printf("%s", iter>1 ? "Average Measurements\n":"");
+  printf("Batch              = %d\n", batch);
+
+  printf("%s", iter>1 ? "Average Measurements of iterations\n":"");
   printf("PCIe Write         = %.2lfms\n", pcie_write);
   printf("Kernel Execution   = %.2lfms\n", exec);
   printf("PCIe Read          = %.2lfms\n", pcie_read);
