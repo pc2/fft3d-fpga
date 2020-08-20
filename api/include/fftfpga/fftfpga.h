@@ -132,6 +132,8 @@ extern fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int
  */
 extern fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv);
 
+extern fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, int inv);
+
 extern fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, int how_many);
 
 

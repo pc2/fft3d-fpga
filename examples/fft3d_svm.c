@@ -22,7 +22,7 @@ int main(int argc, const char **argv) {
   char *path = "fft3d_emulate.aocx";
   const char *platform;
   fpga_t timing = {0.0, 0.0, 0.0, 0};
-  int use_svm = 0;
+  int use_svm = 1;
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
   bool status = true, use_emulator = false;
@@ -93,7 +93,7 @@ int main(int argc, const char **argv) {
       else{
         // use ddr for 3d Transpose
         temp_timer = getTimeinMilliseconds();
-        timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
+        timing = fftfpgaf_c2c_3d_ddr_svm(N, inp, out, inv);
         total_api_time += getTimeinMilliseconds() - temp_timer;
       }
 

@@ -849,7 +849,7 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int interl
 }
 
 /**
- * \brief  compute an out-of-place single precision complex 3D-FFT using the DDR of the FPGA
+ * \brief  compute an out-of-place single precision complex 3D FFT using the DDR for 3D Transpose where the data access between the host and the FPGA is using Shared Virtual Memory (SVM)
  * \param  N    : integer pointer addressing the size of FFT3d  
  * \param  inp  : float2 pointer to input data of size [N * N * N]
  * \param  out  : float2 pointer to output data of size [N * N * N]
@@ -857,7 +857,7 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int interl
  * \param  interleaving : 1 if using burst interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
+fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, int inv) {
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
@@ -911,97 +911,61 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
   queue_setup();
 
   // Device memory buffers
-  cl_mem d_inData, d_outData;
-  d_inData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
-  checkError(status, "Failed to allocate input device buffer\n");
-  d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  cl_mem d_inOutData;
+  d_inOutData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
-  float2 *h_inData, *h_outData;
   // allocate SVM buffers
-  // Required outside the if stm so that compiler doesn't warm about uninitialized variables
+  float2 *h_inData, *h_outData;
   h_inData = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
   h_outData = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
 
-  if(svm_enabled){
+  status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData, sizeof(float2) * num_pts, 0, NULL, NULL);
+  checkError(status, "Failed to map input data");
 
-    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData, sizeof(float2) * num_pts, 0, NULL, NULL);
-    checkError(status, "Failed to map input data");
-
-    // copy data into h_inData
-    for(size_t i = 0; i < num_pts; i++){
-      h_inData[i].x = inp[i].x;
-      h_inData[i].y = inp[i].y;
-    }
-
-    status = clEnqueueSVMUnmap(queue1, (void *)h_inData, 0, NULL, NULL);
-    checkError(status, "Failed to unmap input data");
-
-    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
-    checkError(status, "Failed to map input data");
-
-    // copy data into h_inData
-    for(size_t i = 0; i < num_pts; i++){
-      h_outData[i].x = 0.0;
-      h_outData[i].y = 0.0;
-    }
-
-    status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
-    checkError(status, "Failed to unmap input data");
-
-    // write to fetch kernel using SVM based PCIe
-    status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData);
-    checkError(status, "Failed to set fetch1 kernel arg");
-
-    status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set ffta kernel arg");
-    status=clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set fftb kernel arg");
-
-    // kernel stores to DDR memory
-    status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
-    checkError(status, "Failed to set store1 kernel arg");
-
-    // kernel fetches from DDR memory
-    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
-    checkError(status, "Failed to set fetch2 kernel arg");
-    status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set fftc kernel arg");
-
-    // kernel stores using SVM based PCIe to host
-    status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData);
-    checkError(status, "Failed to set store2 kernel arg");
+  // copy data into h_inData
+  for(size_t i = 0; i < num_pts; i++){
+    h_inData[i].x = inp[i].x;
+    h_inData[i].y = inp[i].y;
   }
-  else{
-    // Copy data from host to device
-    fft_time.pcie_write_t = getTimeinMilliSec();
 
-    status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, NULL);
+  status = clEnqueueSVMUnmap(queue1, (void *)h_inData, 0, NULL, NULL);
+  checkError(status, "Failed to unmap input data");
 
-    status = clFinish(queue1);
-    checkError(status, "failed to finish");
+  status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
+  checkError(status, "Failed to map input data");
 
-    fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
-    checkError(status, "Failed to copy data to device");
-
-    status=clSetKernelArg(fetch1_kernel, 0, sizeof(cl_mem), (void *)&d_inData);
-    checkError(status, "Failed to set fetch1 kernel arg");
-
-    status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set ffta kernel arg");
-    status=clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set fftb kernel arg");
-
-    status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
-    checkError(status, "Failed to set store1 kernel arg");
-
-    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
-    checkError(status, "Failed to set fetch2 kernel arg");
-    status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set fftc kernel arg");
-    status=clSetKernelArg(store2_kernel, 0, sizeof(cl_mem), (void *)&d_inData);
-    checkError(status, "Failed to set store2 kernel arg");
+  // copy data into h_inData
+  for(size_t i = 0; i < num_pts; i++){
+    h_outData[i].x = 0.0;
+    h_outData[i].y = 0.0;
   }
+
+  status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
+  checkError(status, "Failed to unmap input data");
+
+  // write to fetch kernel using SVM based PCIe
+  status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData);
+  checkError(status, "Failed to set fetch1 kernel arg");
+
+  status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set ffta kernel arg");
+  status=clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set fftb kernel arg");
+
+  // kernel stores to DDR memory
+  status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_inOutData);
+  checkError(status, "Failed to set store1 kernel arg");
+
+  // kernel fetches from DDR memory
+  status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_inOutData);
+  checkError(status, "Failed to set fetch2 kernel arg");
+  status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set fftc kernel arg");
+
+  // kernel stores using SVM based PCIe to host
+  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData);
+  checkError(status, "Failed to set store2 kernel arg");
 
   fft_time.exec_t = getTimeinMilliSec();
   status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
@@ -1042,36 +1006,188 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
 
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
-  if(svm_enabled){
-    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
-      (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
-    checkError(status, "Failed to map out data");
+  status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
+    (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
+  checkError(status, "Failed to map out data");
 
-    for(size_t i = 0; i < num_pts; i++){
-      out[i].x = h_outData[i].x;
-      out[i].y = h_outData[i].y;
-    }
-
-    status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
-    checkError(status, "Failed to unmap out data");
-
-    if (h_inData)
-      clSVMFree(context, h_inData);
-    if (h_outData)
-      clSVMFree(context, h_outData);
-
+  for(size_t i = 0; i < num_pts; i++){
+    out[i].x = h_outData[i].x;
+    out[i].y = h_outData[i].y;
   }
-  else{
-    // Copy results from device to host
-    fft_time.pcie_read_t = getTimeinMilliSec();
-    status = clEnqueueReadBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, NULL);
-    
-    status = clFinish(queue1);
-    checkError(status, "failed to finish reading DDR using PCIe");
 
-    fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
-    checkError(status, "Failed to copy data from device");
+  status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
+  checkError(status, "Failed to unmap out data");
+
+  if (h_inData)
+    clSVMFree(context, h_inData);
+  if (h_outData)
+    clSVMFree(context, h_outData);
+
+  queue_cleanup();
+
+  if (d_inOutData)
+    clReleaseMemObject(d_inOutData);
+
+  if(fetch1_kernel) 
+    clReleaseKernel(fetch1_kernel);  
+  if(fetch2_kernel) 
+    clReleaseKernel(fetch2_kernel);  
+
+  if(ffta_kernel) 
+    clReleaseKernel(ffta_kernel);  
+  if(fftb_kernel) 
+    clReleaseKernel(fftb_kernel);  
+  if(fftc_kernel) 
+    clReleaseKernel(fftc_kernel);  
+
+  if(transpose_kernel) 
+    clReleaseKernel(transpose_kernel);  
+
+  if(store1_kernel) 
+    clReleaseKernel(store1_kernel);  
+  if(store2_kernel) 
+    clReleaseKernel(store2_kernel);  
+
+  fft_time.valid = 1;
+  return fft_time;
+}
+
+/**
+ * \brief  compute an out-of-place single precision complex 3D-FFT using the DDR of the FPGA for 3D Transpose
+ * \param  N    : integer pointer addressing the size of FFT3d  
+ * \param  inp  : float2 pointer to input data of size [N * N * N]
+ * \param  out  : float2 pointer to output data of size [N * N * N]
+ * \param  inv  : int toggle to activate backward FFT
+ * \param  interleaving : 1 if using burst interleaved global memory buffers
+ * \return fpga_t : time taken in milliseconds for data transfers and execution
+ */
+fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+  cl_int status = 0;
+  int num_pts = N * N * N;
+  
+  // if N is not a power of 2
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
+    return fft_time;
   }
+
+#ifdef VERBOSE
+  printf("Launching%s 3d FFT transform in DDR \n", inv ? " inverse":"");
+#endif
+
+  // Can't pass bool to device, so convert it to int
+  int inverse_int = inv;
+
+  // Setup kernels
+  cl_kernel fetch1_kernel = clCreateKernel(program, "fetchBitrev1", &status);
+  checkError(status, "Failed to create fetch1 kernel");
+  cl_kernel ffta_kernel = clCreateKernel(program, "fft3da", &status);
+  checkError(status, "Failed to create fft3da kernel");
+  cl_kernel transpose_kernel = clCreateKernel(program, "transpose", &status);
+  checkError(status, "Failed to create transpose kernel");
+  cl_kernel fftb_kernel = clCreateKernel(program, "fft3db", &status);
+  checkError(status, "Failed to create fft3db kernel");
+  cl_kernel store1_kernel = clCreateKernel(program, "transposeStore1", &status);
+  checkError(status, "Failed to create store1 kernel");
+
+  cl_kernel fetch2_kernel = clCreateKernel(program, "fetchBitrev2", &status);
+  checkError(status, "Failed to create fetch2 kernel");
+  cl_kernel fftc_kernel = clCreateKernel(program, "fft3dc", &status);
+  checkError(status, "Failed to create fft3dc kernel");
+  cl_kernel store2_kernel = clCreateKernel(program, "transposeStore2", &status);
+  checkError(status, "Failed to create store2 kernel");
+
+  // Setup Queues to the kernels
+  queue_setup();
+
+  // Device memory buffers
+  cl_mem d_inData, d_transpose, d_outData;
+  d_inData = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  checkError(status, "Failed to allocate input device buffer\n");
+
+  d_transpose = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+  d_outData = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  checkError(status, "Failed to allocate output device buffer\n");
+
+  // Copy data from host to device
+  fft_time.pcie_write_t = getTimeinMilliSec();
+
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, NULL);
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish");
+
+  fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
+  checkError(status, "Failed to copy data to device");
+
+  status=clSetKernelArg(fetch1_kernel, 0, sizeof(cl_mem), (void *)&d_inData);
+  checkError(status, "Failed to set fetch1 kernel arg");
+
+  status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set ffta kernel arg");
+  status=clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set fftb kernel arg");
+
+  status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_transpose);
+  checkError(status, "Failed to set store1 kernel arg");
+
+  status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_transpose);
+  checkError(status, "Failed to set fetch2 kernel arg");
+  status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set fftc kernel arg");
+  status=clSetKernelArg(store2_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
+  checkError(status, "Failed to set store2 kernel arg");
+
+  fft_time.exec_t = getTimeinMilliSec();
+  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
+
+  status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fft kernel");
+
+  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch transpose kernel");
+
+  status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch second fft kernel");
+
+  status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch second transpose kernel");
+
+  // enqueue fetch to same queue as the store kernel due to data dependency
+  status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
+
+  status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fft kernel");
+
+  status = clEnqueueTask(queue3, store2_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch transpose kernel");
+
+  status = clFinish(queue5);
+  checkError(status, "failed to finish");
+  status = clFinish(queue4);
+  checkError(status, "failed to finish");
+  status = clFinish(queue3);
+  checkError(status, "failed to finish");
+  status = clFinish(queue2);
+  checkError(status, "failed to finish");
+  status = clFinish(queue1);
+  checkError(status, "failed to finish");
+
+  fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
+
+  // Copy results from device to host
+  fft_time.pcie_read_t = getTimeinMilliSec();
+  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, NULL);
+  
+  status = clFinish(queue1);
+  checkError(status, "failed to finish reading DDR using PCIe");
+
+  fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
+  checkError(status, "Failed to copy data from device");
 
   queue_cleanup();
 
@@ -1079,6 +1195,8 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv) {
     clReleaseMemObject(d_inData);
   if (d_outData) 
     clReleaseMemObject(d_outData);
+  if (d_transpose) 
+    clReleaseMemObject(d_transpose);
 
   if(fetch1_kernel) 
     clReleaseKernel(fetch1_kernel);  

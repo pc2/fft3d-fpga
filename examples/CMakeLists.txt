@@ -4,7 +4,7 @@ project(examplesfftfpga VERSION 0.1
             DESCRIPTION "Example Code that uses libfftfpga"
             LANGUAGES C CXX)
 
-set(examples fft3d fft2d fft1d fft3d_svm_batch)
+set(examples fft3d fft3d_svm fft3d_svm_batch fft2d fft1d)
 
 # create a target for each of the example 
 foreach(example ${examples})
