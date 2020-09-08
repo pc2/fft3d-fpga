@@ -8,6 +8,8 @@
 #ifndef FFTFPGA_H
 #define FFTFPGA_H
 
+#include <stdbool.h>
+
 /**
  * Single Precision Complex Floating Point Data Structure
  */
@@ -46,7 +48,7 @@ typedef struct fpga_timing {
           -4 Failed to create program, file not found in path
           -5 Device does not support required SVM
  */
-extern int fpga_initialize(const char *platform_name, const char *path, int use_svm);
+extern int fpga_initialize(const char *platform_name, const char *path, bool use_svm);
 
 /** 
  * @brief Release FPGA Resources
@@ -76,7 +78,9 @@ extern void* fftfpgaf_complex_malloc(size_t sz);
  * @param  iter : number of iterations of the N point FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int iter);
+extern fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, bool inv, int iter);
+
+extern fpga_t fftfpgaf_c2c_1d_svm(int N, float2 *inp, float2 *out, bool inv, int batch);
 
 /**
  * @brief  compute an out-of-place single precision complex 1D-FFT on the FPGA
@@ -87,7 +91,7 @@ extern fpga_t fftfpga_c2c_1d(int N, double2 *inp, double2 *out, int inv, int ite
  * @param  iter : number of iterations of the N point FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter);
+extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, bool inv, int iter);
 
 /**
  * @brief  compute an out-of-place single precision complex 2D-FFT using the BRAM of the FPGA
@@ -99,7 +103,7 @@ extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, int inv, int iter
  * @param  how_many : number of 2D FFTs to computer, default 1
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving, int how_many);
+extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, int interleaving, int how_many);
 
 /**
  * @brief  compute an out-of-place single precision complex 2D-FFT using the DDR of the FPGA
@@ -109,7 +113,7 @@ extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, int inv, int
  * @param  inv  : int toggle to activate backward FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv);
+extern fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv);
 
 /**
  * @brief  compute an out-of-place single precision complex 3D-FFT using the BRAM of the FPGA
@@ -120,7 +124,7 @@ extern fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, int inv);
  * @param  interleaving : 1 if using burst interleaved global memory buffers
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int interleaving);
+extern fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool interleaving);
 
 /**
  * @brief  compute an out-of-place single precision complex 3D-FFT using the DDR of the FPGA
@@ -130,11 +134,11 @@ extern fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, int inv, int
  * @param  inv  : int toggle to activate backward FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, int inv);
+extern fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv);
 
-extern fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, int inv);
+extern fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv);
 
-extern fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, int inv, int how_many);
+extern fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, bool inv, int how_many);
 
 
 #endif

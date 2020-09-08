@@ -20,14 +20,14 @@ static const char *const usage[] = {
 int main(int argc, const char **argv) {
   int N = 64, dim = 3, iter = 1, batch = 1;
 
-  bool interleaving = false, use_bram = false, sp = true, inv = false;
+  bool inv = false, sp = true, use_bram = false, interleaving = false;
   bool status = true, use_emulator = false;
   bool use_svm = true;
 
   char *path = "fft3d_emulate.aocx";
   const char *platform;
-
   fpga_t timing = {0.0, 0.0, 0.0, 0};
+
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
 
@@ -38,6 +38,7 @@ int main(int argc, const char **argv) {
     OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
+    OPT_INTEGER('c',"batch", &batch, "Batch"),
     OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
@@ -67,59 +68,50 @@ int main(int argc, const char **argv) {
     return EXIT_FAILURE;
   }
 
-  if(sp == 0){
-    printf("Not implemented. Work in Progress\n");
-    return EXIT_SUCCESS;
-  } 
-  else{
-    // create and destroy data every iteration
-    size_t inp_sz = sizeof(float2) * N * N * N;
-    float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
-    float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
+  // create and destroy data every iteration
+  size_t inp_sz = sizeof(float2) * N * N * N * batch;
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
+  float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
-    for(size_t i = 0; i < iter; i++){
-      status = fftf_create_data(inp, N * N * N);
-      if(!status){
-        fprintf(stderr, "Error in Data Creation \n");
-        free(inp);
-        free(out);
-        return EXIT_FAILURE;
-      }
+  for(size_t i = 0; i < iter; i++){
 
-      temp_timer = getTimeinMilliseconds();
-      timing = fftfpgaf_c2c_3d_ddr_svm(N, inp, out, inv);
-      total_api_time += getTimeinMilliseconds() - temp_timer;
+    status = fftf_create_data(inp, N * N * N * batch);
+    if(!status){
+      fprintf(stderr, "Error in Data Creation \n");
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
+
+    // use ddr for 3d Transpose
+    temp_timer = getTimeinMilliseconds();
+    timing = fftfpgaf_c2c_3d_ddr_svm_batch(N, inp, out, inv, batch);
+    total_api_time += getTimeinMilliseconds() - temp_timer;
 
 #ifdef USE_FFTW
-      if(!verify_sp_fft3d_fftw(out, inp, N, inv, 1)){
-        fprintf(stderr, "3d FFT Verification Failed \n");
-        free(inp);
-        free(out);
-        return EXIT_FAILURE;
-      }
+    if(!verify_sp_fft3d_fftw(out, inp, N, inv, batch)){
+      fprintf(stderr, "3d FFT Verification Failed \n");
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
 #endif
-      if(timing.valid == 0){
-        fprintf(stderr, "Invalid execution, timing found to be 0");
-        free(inp);
-        free(out);
-        return EXIT_FAILURE;
-      }
+    if(timing.valid == 0){
+      fprintf(stderr, "Invalid execution, timing found to be 0");
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
 
-      avg_rd += timing.pcie_read_t;
-      avg_wr += timing.pcie_write_t;
-      avg_exec += timing.exec_t;
+    avg_rd += timing.pcie_read_t;
+    avg_wr += timing.pcie_write_t;
+    avg_exec += timing.exec_t;
 
-      printf("Iter: %lu\n", i);
-      printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
-      printf("\tKernel: %lfms\n", timing.exec_t);
-      printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
-             
-    }  // iter
+  }  // iter
 
-    // destroy FFT input and output
-    free(inp);
-    free(out);
-  } // sp condition
+  // destroy FFT input and output
+  free(inp);
+  free(out);
 
   // destroy fpga state
   fpga_final();

@@ -248,7 +248,7 @@ kernel void fft3db(int inverse) {
 }
 
 // Stores data for 3rd dim FFT 
-kernel void transpose3d(){
+kernel void transpose3D(){
   unsigned revcolt, where;
   unsigned where_test;
 

@@ -7,6 +7,7 @@ extern "C" {
   #include "fftfpga/fftfpga.h"
   #include "helper.h"
   #include <math.h>
+  #include <stdbool.h>
 
 #ifdef USE_FFTW
   #include <fftw3.h>
@@ -51,7 +52,7 @@ TEST(fft1dFPGATest, CorrectnessSp){
   // malloc data to input
   fftf_create_data(inp, N);
 
-  int isInit= fpga_initialize("Intel(R) FPGA", "emu_64_fft1d/fft1d.aocx", 0);
+  int isInit= fpga_initialize("Intel(R) FPGA", "emu_64_fft1d/fft1d.aocx", false);
   ASSERT_EQ(isInit, 0);
 
   fpga_t fft_time = fftfpgaf_c2c_1d(64, inp, out, 0, 1);

@@ -18,14 +18,18 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 3, iter = 1, inv = 0, sp = 0, use_bram = 0, batch = 1,interleaving = 0;
+  int N = 64, dim = 3, iter = 1, batch = 1;
+
+  bool interleaving = false, use_bram = true, sp = true;
+  bool use_svm = false, inv = false;
+  bool status = true, use_emulator = false;
+
   char *path = "fft3d_emulate.aocx";
   const char *platform;
+
   fpga_t timing = {0.0, 0.0, 0.0, 0};
-  int use_svm = 0;
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
-  bool status = true, use_emulator = false;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -34,7 +38,6 @@ int main(int argc, const char **argv) {
     OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
-    OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
     OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
@@ -47,7 +50,7 @@ int main(int argc, const char **argv) {
   argc = argparse_parse(&argparse, argc, argv);
 
   // Print to console the configuration chosen to execute during runtime
-  print_config(N, dim, iter, inv, sp, batch, use_bram);
+  print_config(N, dim, iter, inv, sp, batch, use_bram, interleaving);
 
   if(use_emulator){
     platform = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
@@ -64,68 +67,54 @@ int main(int argc, const char **argv) {
     return EXIT_FAILURE;
   }
 
-  if(sp == 0){
-    printf("Not implemented. Work in Progress\n");
-    return EXIT_SUCCESS;
-  } 
-  else{
-    for(size_t i = 0; i < iter; i++){
+  size_t inp_sz = sizeof(float2) * N * N * N;
+  float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
+  float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
-      // create and destroy data every iteration
-      size_t inp_sz = sizeof(float2) * N * N * N;
-      float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
-      float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
+  for(size_t i = 0; i < iter; i++){
 
-      status = fftf_create_data(inp, N * N * N);
-      if(!status){
-        fprintf(stderr, "Error in Data Creation \n");
-        free(inp);
-        free(out);
-        return EXIT_FAILURE;
-      }
-
-      if(use_bram == 1){
-        // use bram for 3d Transpose
-        temp_timer = getTimeinMilliseconds();
-        timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv, interleaving);
-        total_api_time += getTimeinMilliseconds() - temp_timer;
-      }
-      else{
-        // use ddr for 3d Transpose
-        temp_timer = getTimeinMilliseconds();
-        timing = fftfpgaf_c2c_3d_ddr(N, inp, out, inv);
-        total_api_time += getTimeinMilliseconds() - temp_timer;
-      }
-
-#ifdef USE_FFTW
-      if(!verify_sp_fft3d_fftw(out, inp, N, inv, 1)){
-        fprintf(stderr, "3d FFT Verification Failed \n");
-        free(inp);
-        free(out);
-        return EXIT_FAILURE;
-      }
-#endif
-      if(timing.valid == 0){
-        fprintf(stderr, "Invalid execution, timing found to be 0");
-        free(inp);
-        free(out);
-        return EXIT_FAILURE;
-      }
-
-      avg_rd += timing.pcie_read_t;
-      avg_wr += timing.pcie_write_t;
-      avg_exec += timing.exec_t;
-
-      printf("Iter: %lu\n", i);
-      printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
-      printf("\tKernel: %lfms\n", timing.exec_t);
-      printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
-             
-      // destroy FFT input and output
+    // create and destroy data every iteration
+    status = fftf_create_data(inp, N * N * N);
+    if(!status){
+      fprintf(stderr, "Error in Data Creation \n");
       free(inp);
       free(out);
-    }  // iter
-  } // sp condition
+      return EXIT_FAILURE;
+    }
+
+    // use bram for 3d Transpose
+    temp_timer = getTimeinMilliseconds();
+    timing = fftfpgaf_c2c_3d_bram(N, inp, out, inv, interleaving);
+    total_api_time += getTimeinMilliseconds() - temp_timer;
+
+#ifdef USE_FFTW
+    if(!verify_sp_fft3d_fftw(out, inp, N, inv, 1)){
+      fprintf(stderr, "3d FFT Verification Failed \n");
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
+#endif
+    if(timing.valid == 0){
+      fprintf(stderr, "Invalid execution, timing found to be 0");
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
+
+    avg_rd += timing.pcie_read_t;
+    avg_wr += timing.pcie_write_t;
+    avg_exec += timing.exec_t;
+
+    printf("Iter: %lu\n", i);
+    printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
+    printf("\tKernel: %lfms\n", timing.exec_t);
+    printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
+            
+  }  // iter
+  // destroy FFT input and output
+  free(inp);
+  free(out);
 
   // destroy fpga state
   fpga_final();

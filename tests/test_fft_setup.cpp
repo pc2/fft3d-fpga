@@ -2,6 +2,7 @@
 
 #include "gtest/gtest.h"  // finds this because gtest is linked
 #include <math.h>
+#include <stdbool.h>
 #ifdef USE_FFTW
   #include <fftw3.h>
 #endif
@@ -16,16 +17,16 @@ extern "C" {
  */
 TEST(fftFPGASetupTest, ValidInit){
   // empty path argument
-  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "", 0), -1);
+  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "", false), -1);
 
   // wrong platform name
-  EXPECT_EQ(fpga_initialize("TEST", "fft1d_emulate.aocx", 0), -2);
+  EXPECT_EQ(fpga_initialize("TEST", "fft1d_emulate.aocx", false), -2);
 
   // wrong path argument
-  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "TEST", 0), -4);
+  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "TEST", false), -4);
 
   // right path and platform names
-  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_bram/fft3d_bram.aocx", 0), 0);
+  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_bram/fft3d_bram.aocx", false), 0);
   fpga_final();
 }
 

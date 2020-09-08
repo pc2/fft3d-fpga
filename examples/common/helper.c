@@ -56,22 +56,24 @@ bool fft_create_data(double2 *inp, int N){
  * \param  N: fft size
  * \param  dim: number of dimensions of size
  * \param  iter: number of iterations of each transformation (if BATCH mode)
- * \param  inv: 1, backward transform
- * \param  sp: 1, single precision floating point transformation
- * \param  use_bram: 1 if transpose uses BRAM, not DDR (valid for 2d and 3d FFT)
+ * \param  inv: true for backward transform
+ * \param  sp: true for single precision floating point transformation
+ * \param  use_bram: true if transpose uses BRAM, not DDR (valid for 2d and 3d FFT)
+ * \param  interleaving: true if data should be interleaved amongst the banks in DDR memory
  */
-void print_config(int N, int dim, int iter, int inv, int sp, int batch, int use_bram){
+void print_config(int N, int dim, int iter, bool inv, bool sp, int batch, bool use_bram, bool interleaving){
   printf("\n------------------------------------------\n");
   printf("FFT Configuration: \n");
   printf("--------------------------------------------\n");
   printf("Type               = Complex to Complex\n");
   printf("Points             = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
-  printf("Precision          = %s \n",  sp==1 ? "Single": "Double");
+  printf("Precision          = %s \n", sp ? "Single": "Double");
   printf("Direction          = %s \n", inv ? "Backward":"Forward");
   printf("Placement          = In Place    \n");
   printf("Batch              = %d \n", batch);
   printf("Iterations         = %d \n", iter);
   printf("Transpose          = %s \n", use_bram ? "BRAM":"DDR");
+  printf("Interleaving       = %s \n", interleaving ? "Yes":"No");
   printf("--------------------------------------------\n\n");
 }
 
@@ -82,10 +84,10 @@ void print_config(int N, int dim, int iter, int inv, int sp, int batch, int use_
  * \param  N: fft size
  * \param  dim: number of dimensions of size
  * \param  iter: number of iterations of each transformation (if BATCH mode)
- * \param  inv: 1 if backward transform
+ * \param  inv: true if backward transform
  * \param  single precision floating point transformation
  */
-void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int batch, int inv, int sp){
+void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int batch, bool inv, bool sp){
 
   double avg_api_time = 0.0;
 
@@ -100,7 +102,7 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   double gpoints_per_sec = (pow(N, dim)  / (exec * 1e-3)) * 1e-9;
   double gBytes_per_sec = 0.0;
 
-  if(sp == 1){
+  if(sp){
     gBytes_per_sec =  gpoints_per_sec * 8; // bytes
   }
   else{
@@ -109,11 +111,11 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
 
   double gflops = dim * 5 * pow(N, dim) * (log((double)N)/log((double)2))/(exec * 1e-3 * 1E9); 
 
-  printf("\n------------------------------------------\n");
+  printf("\n\n------------------------------------------\n");
   printf("Measurements \n");
   printf("--------------------------------------------\n");
   printf("Points             = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
-  printf("Precision          = %s\n",  sp==1 ? "Single": "Double");
+  printf("Precision          = %s\n",  sp ? "Single": "Double");
   printf("Direction          = %s\n", inv ? "Backward":"Forward");
   printf("Iterations         = %d\n", iter);
   printf("Batch              = %d\n", batch);

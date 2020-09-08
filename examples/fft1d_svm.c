@@ -10,7 +10,6 @@
 
 #include "argparse.h"
 #include "helper.h"
-#include "verify_fftw.h"
 
 static const char *const usage[] = {
     "bin/host [options]",
@@ -18,13 +17,12 @@ static const char *const usage[] = {
 };
 
 int main(int argc, const char **argv) {
-  int N = 64, dim = 2, iter = 1, batch = 1;
+  int N = 64, dim = 1, iter = 1, batch = 1;
 
-  bool use_bram = false, interleaving = false, sp = true, inv = false;
+  bool use_bram = false, sp = true, inv = false, use_svm = true, interleaving = false;
   bool status = true, use_emulator = false;
-  bool use_svm = 0;
 
-  char *path = "fft2d_emulate.aocx";
+  char *path = "fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
 
   fpga_t timing = {0.0, 0.0, 0.0, 0};
@@ -38,10 +36,7 @@ int main(int argc, const char **argv) {
     OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
-    OPT_BOOLEAN('v',"svm", &use_svm, "Use SVM"),
     OPT_INTEGER('c',"batch", &batch, "Batch"),
-    OPT_BOOLEAN('m',"bram", &use_bram, "Use BRAM"),
-    OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
     OPT_END(),
@@ -67,47 +62,34 @@ int main(int argc, const char **argv) {
     return EXIT_FAILURE;
   }
 
-  size_t inp_sz = sizeof(float2) * N * N;
+  size_t inp_sz = sizeof(float2) * N * batch;
+
   float2 *inp = (float2*)fftfpgaf_complex_malloc(inp_sz);
   float2 *out = (float2*)fftfpgaf_complex_malloc(inp_sz);
 
+  // find the average of iterations of batched 1D FFTs
+  // random data every iteration and every batch
   for(size_t i = 0; i < iter; i++){
 
-    status = fftf_create_data(inp, N * N);
+    status = fftf_create_data(inp, N * batch);
     if(!status){
+      fprintf(stderr, "Error in Data Creation \n");
       free(inp);
       free(out);
       return EXIT_FAILURE;
     }
 
-    if(use_bram == 1){
-      // use bram for 2d Transpose
-      temp_timer = getTimeinMilliseconds();
-      timing = fftfpgaf_c2c_2d_bram(N, inp, out, inv, interleaving, batch);
-      total_api_time += getTimeinMilliseconds() - temp_timer;
-    }
-    else{
-      // use global memory for 2d Transpose
-      temp_timer = getTimeinMilliseconds();
-      timing = fftfpgaf_c2c_2d_ddr(N, inp, out, inv);
-      total_api_time += getTimeinMilliseconds() - temp_timer;
-    }
+    temp_timer = getTimeinMilliseconds();
+    timing = fftfpgaf_c2c_1d_svm(N, inp, out, inv, batch);
+    total_api_time += getTimeinMilliseconds() - temp_timer;
 
-#ifdef USE_FFTW
-    if(!verify_sp_fft2d_fftw(out, inp, N, inv)){
-      fprintf(stderr, "2d FFT Verification Failed \n");
-      free(inp);
-      free(out);
-      return EXIT_FAILURE;
-    }
-#endif
+    // TODO: Verification of bit reversed output
     if(timing.valid == 0){
       fprintf(stderr, "Invalid execution, timing found to be 0");
       free(inp);
       free(out);
       return EXIT_FAILURE;
     }
-
     avg_rd += timing.pcie_read_t;
     avg_wr += timing.pcie_write_t;
     avg_exec += timing.exec_t;
@@ -116,17 +98,15 @@ int main(int argc, const char **argv) {
     printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
     printf("\tKernel: %lfms\n", timing.exec_t);
     printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
-
-  }  // iter
-
+            
+  }
   // destroy FFT input and output
   free(inp);
   free(out);
 
-  // destroy fpga state
+  // destroy data
   fpga_final();
 
-  // display performance measures
   display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;

@@ -11,11 +11,11 @@
  * \param fpga_out: pointer to fpga computation of fft3d for sp complex data 
  * \param fftw_data: pointer to fft3d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT3d
- * \param inverse: 1 if inverse
+ * \param inverse: true if backward FFT
  * \param how_many: batch, default is 1 
  * \return true if verification passed
  */
-bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse, int how_many){
+bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, bool inverse, int how_many){
 
   // Copy inp data to verify using FFTW
   // requires allocating data specifically for FFTW computation
@@ -91,10 +91,10 @@ bool verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse, i
  * \param fpga_out: pointer to fpga computation of fft2d for sp complex data 
  * \param fftw_data: pointer to fft2d sized allocation of sp complex data for fftw cpu computation
  * \param N: number of points per dimension of FFT2d
- * \param inverse: 1 if inverse
+ * \param inverse: true if backward FFT
  * \return true if verification passed
  */
-bool verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, int inverse){
+bool verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, bool inverse){
 
   // Copy inp data to verify using FFTW
   // requires allocating data specifically for FFTW computation
