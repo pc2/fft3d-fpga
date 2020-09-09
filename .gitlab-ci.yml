@@ -17,7 +17,7 @@ build-all:
     - make fft2d_bram_emu
     - make fft3d_ddr_emu
     - make fft3d_bram_emu
-    - chmod +x bin/fft3d bin/fft2d bin/fft1d bin/test_fftfpga
+    - chmod +x bin/fft3d_bram bin/fft3d_ddr bin/fft2d bin/fft1d bin/test_fftfpga
   artifacts:
     paths:
       - build/bin/emu_64_fft1d/fft1d.aocx
