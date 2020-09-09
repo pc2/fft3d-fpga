@@ -1,73 +1,64 @@
-//  Author: Arjun Ramaswami
+// Author: Arjun Ramaswami
 
-#include "fft_8.cl" 
-
-// Source the log(size) (log(1k) = 10) from a header shared with the host code
 #include "fft_config.h"
+#include "fft_8.cl" 
+#include "../matrixTranspose/diagonal_bitrev.cl"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
-channel float2 chaninfft[8] __attribute__((depth(8)));
-channel float2 chanoutfft[8] __attribute__((depth(8)));
-channel float2 chaninfft2[8] __attribute__((depth(8)));
-channel float2 chanoutfft2[8] __attribute__((depth(8)));
-channel float2 chaninfetch[8] __attribute__((depth(8)));
 
+channel float2 chaninfft3da[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninfft3db[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninfft3dc[POINTS] __attribute__((depth(POINTS)));
 
-int bit_reversed(int x, int bits) {
-  int y = 0;
-  #pragma unroll 
-  for (int i = 0; i < bits; i++) {
-    y <<= 1;
-    y |= x & 1;
-    x >>= 1;
-  }
-  return y;
-}
+channel float2 chaninTranspose[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninTranspose3D[POINTS] __attribute__((depth(POINTS)));
 
-void sendTofft(float2 *buffer, unsigned j){
-  write_channel_intel(chaninfft[0], buffer[j]);               // 0
-  write_channel_intel(chaninfft[1], buffer[4 * N / 8 + j]);   // 32
-  write_channel_intel(chaninfft[2], buffer[2 * N / 8 + j]);   // 16
-  write_channel_intel(chaninfft[3], buffer[6 * N / 8 + j]);   // 48
-  write_channel_intel(chaninfft[4], buffer[N / 8 + j]);       // 8
-  write_channel_intel(chaninfft[5], buffer[5 * N / 8 + j]);   // 40
-  write_channel_intel(chaninfft[6], buffer[3 * N / 8 + j]);   // 24
-  write_channel_intel(chaninfft[7], buffer[7 * N / 8 + j]);   // 54
-}
+channel float2 chaninTranStore[POINTS] __attribute__((depth(POINTS)));
 
 // Kernel that fetches data from global memory 
 kernel void fetch(global volatile float2 * restrict src) {
+  unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
+  bool is_bitrevA = false;
 
-  for(unsigned k = 0; k < (1 << (LOGN + LOGN)); k++){ 
+  float2 __attribute__((memory, numbanks(8))) buf[2][N];
+  
+  // additional iterations to fill the buffers
+  for(unsigned step = 0; step < (N * DEPTH) + delay; step++){
 
-    float2 buf[N];
-    #pragma unroll 8
-    for(unsigned i = 0; i < N; i++){
-      buf[i & ((1<<LOGN)-1)] = src[(k << LOGN) + i];    
+    unsigned where = (step & ((N * DEPTH) - 1)) * 8; 
+
+    float2x8 data;
+    if (step < (N * DEPTH)) {
+      data.i0 = src[where + 0];
+      data.i1 = src[where + 1];
+      data.i2 = src[where + 2];
+      data.i3 = src[where + 3];
+      data.i4 = src[where + 4];
+      data.i5 = src[where + 5];
+      data.i6 = src[where + 6];
+      data.i7 = src[where + 7];
+    } else {
+      data.i0 = data.i1 = data.i2 = data.i3 = 
+                data.i4 = data.i5 = data.i6 = data.i7 = 0;
     }
 
-    for(unsigned j = 0; j < (N / 8); j++){
-      sendTofft(&buf[0], j);
-    }
-  }
+    is_bitrevA = ( (step & ((N / 8) - 1)) == 0) ? !is_bitrevA: is_bitrevA;
 
-  for(unsigned k = 0; k < (1 << (LOGN+LOGN)); k++){ 
+    unsigned row = step & (DEPTH - 1);
+    data = bitreverse_fetch(data,
+      is_bitrevA ? buf[0] : buf[1], 
+      is_bitrevA ? buf[1] : buf[0], 
+      row);
 
-    float2 buf[N];
-    for(unsigned i = 0; i < (N / 8); i++){
-
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 0] = read_channel_intel(chaninfetch[0]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 1] = read_channel_intel(chaninfetch[1]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 2] = read_channel_intel(chaninfetch[2]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 3] = read_channel_intel(chaninfetch[3]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 4] = read_channel_intel(chaninfetch[4]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 5] = read_channel_intel(chaninfetch[5]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 6] = read_channel_intel(chaninfetch[6]);
-      buf[((i << LOGPOINTS) & ((1 << LOGN)-1)) + 7] = read_channel_intel(chaninfetch[7]);
-    }
-
-    for(unsigned j = 0; j < (N / 8); j++){
-      sendTofft(&buf[0], j);
+    if (step >= delay) {
+      write_channel_intel(chaninfft3da[0], data.i0);
+      write_channel_intel(chaninfft3da[1], data.i1);
+      write_channel_intel(chaninfft3da[2], data.i2);
+      write_channel_intel(chaninfft3da[3], data.i3);
+      write_channel_intel(chaninfft3da[4], data.i4);
+      write_channel_intel(chaninfft3da[5], data.i5);
+      write_channel_intel(chaninfft3da[6], data.i6);
+      write_channel_intel(chaninfft3da[7], data.i7);
     }
   }
 }
@@ -75,7 +66,6 @@ kernel void fetch(global volatile float2 * restrict src) {
 /* This single work-item task wraps the FFT engine
  * 'inverse' toggles between the direct and the inverse transform
  */
-
 kernel void fft3da(int inverse) {
 
   /* The FFT engine requires a sliding window for data reordering; data stored
@@ -85,118 +75,113 @@ kernel void fft3da(int inverse) {
    */
 
   float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
-  for( int j = 0; j < N * 2; j++){
 
-      // needs to run "N / 8 - 1" additional iterations to drain the last outputs
-      for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
-        float2x8 data;
+  #pragma loop_coalesce
+  for(unsigned j = 0; j < N; j++){
+    for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
+      float2x8 data;
 
-        // Read data from channels
-        if (i < N * (N / POINTS)) {
-          data.i0 = read_channel_intel(chaninfft[0]);
-          data.i1 = read_channel_intel(chaninfft[1]);
-          data.i2 = read_channel_intel(chaninfft[2]);
-          data.i3 = read_channel_intel(chaninfft[3]);
-          data.i4 = read_channel_intel(chaninfft[4]);
-          data.i5 = read_channel_intel(chaninfft[5]);
-          data.i6 = read_channel_intel(chaninfft[6]);
-          data.i7 = read_channel_intel(chaninfft[7]);
-
-        } else {
-          data.i0 = data.i1 = data.i2 = data.i3 = 
-                    data.i4 = data.i5 = data.i6 = data.i7 = 0;
-        }
-
-        // Perform one FFT step
-        data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
-
-        // Write result to channels
-        if (i >= N / POINTS - 1) {
-          write_channel_intel(chanoutfft[0], data.i0);
-          write_channel_intel(chanoutfft[1], data.i1);
-          write_channel_intel(chanoutfft[2], data.i2);
-          write_channel_intel(chanoutfft[3], data.i3);
-          write_channel_intel(chanoutfft[4], data.i4);
-          write_channel_intel(chanoutfft[5], data.i5);
-          write_channel_intel(chanoutfft[6], data.i6);
-          write_channel_intel(chanoutfft[7], data.i7);
-        }
+      if (i < N * (N / POINTS)) {
+        data.i0 = read_channel_intel(chaninfft3da[0]);
+        data.i1 = read_channel_intel(chaninfft3da[1]);
+        data.i2 = read_channel_intel(chaninfft3da[2]);
+        data.i3 = read_channel_intel(chaninfft3da[3]);
+        data.i4 = read_channel_intel(chaninfft3da[4]);
+        data.i5 = read_channel_intel(chaninfft3da[5]);
+        data.i6 = read_channel_intel(chaninfft3da[6]);
+        data.i7 = read_channel_intel(chaninfft3da[7]);
+      } 
+      else {
+        data.i0 = data.i1 = data.i2 = data.i3 = 
+                  data.i4 = data.i5 = data.i6 = data.i7 = 0;
       }
-   }
+
+      data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
+
+      // Write result to channels
+      if (i >= N / POINTS - 1) {
+        write_channel_intel(chaninTranspose[0], data.i0);
+        write_channel_intel(chaninTranspose[1], data.i1);
+        write_channel_intel(chaninTranspose[2], data.i2);
+        write_channel_intel(chaninTranspose[3], data.i3);
+        write_channel_intel(chaninTranspose[4], data.i4);
+        write_channel_intel(chaninTranspose[5], data.i5);
+        write_channel_intel(chaninTranspose[6], data.i6);
+        write_channel_intel(chaninTranspose[7], data.i7);
+      }
+    }
+  }
 }
 
-// Transposes fetched data; stores them to global memory
-kernel void transpose(global float2 * restrict dest) {
+kernel void transpose2d() {
+  const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
+  bool is_bufA = false, is_bitrevA = false;
 
-  unsigned revcolt, where_read, where_write, where;
+  float2 buf[2][DEPTH][POINTS];
+  //float2 bitrev_in[2][N], bitrev_out[2][N];
+  //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  float2 bitrev_in[2][N];
+  float2 __attribute__((memory, numbanks(8))) bitrev_out[2][N];
+  
+  int initial_delay = DELAY + DELAY; // for each of the bitrev buffer
 
-  local float2 buf[N * N];
+  // additional iterations to fill the buffers
+  for(int step = -initial_delay; step < ((N * DEPTH) + DEPTH); step++){
 
-  // Perform N times N*N transpositions and transfers
-  for(unsigned p = 0; p < N; p++){
-
-    for(unsigned i = 0; i < N; i++){
-      for(unsigned k = 0; k < (N / 8); k++){
-        where_read = ((i << LOGN) + (k << LOGPOINTS));
-
-        buf[where_read + 0] = read_channel_intel(chanoutfft[0]);
-        buf[where_read + 1] = read_channel_intel(chanoutfft[1]);
-        buf[where_read + 2] = read_channel_intel(chanoutfft[2]);
-        buf[where_read + 3] = read_channel_intel(chanoutfft[3]);
-        buf[where_read + 4] = read_channel_intel(chanoutfft[4]);
-        buf[where_read + 5] = read_channel_intel(chanoutfft[5]);
-        buf[where_read + 6] = read_channel_intel(chanoutfft[6]);
-        buf[where_read + 7] = read_channel_intel(chanoutfft[7]);
-      }
+    float2x8 data, data_out;
+    if (step < ((N * DEPTH) - initial_delay)) {
+      data.i0 = read_channel_intel(chaninTranspose[0]);
+      data.i1 = read_channel_intel(chaninTranspose[1]);
+      data.i2 = read_channel_intel(chaninTranspose[2]);
+      data.i3 = read_channel_intel(chaninTranspose[3]);
+      data.i4 = read_channel_intel(chaninTranspose[4]);
+      data.i5 = read_channel_intel(chaninTranspose[5]);
+      data.i6 = read_channel_intel(chaninTranspose[6]);
+      data.i7 = read_channel_intel(chaninTranspose[7]);
+    } else {
+      data.i0 = data.i1 = data.i2 = data.i3 = 
+                data.i4 = data.i5 = data.i6 = data.i7 = 0;
     }
 
-    for(unsigned i = 0; i < N; i++){
-      revcolt = bit_reversed(i, LOGN);
+    // Swap buffers every N*N/8 iterations 
+    // starting from the additional delay of N/8 iterations
+    is_bufA = (( (step + DELAY) & (DEPTH - 1)) == 0) ? !is_bufA: is_bufA;
 
-      for(unsigned k = 0; k < (N / 8); k++){
-        where_write = ((k * N) + revcolt);
+    // Swap bitrev buffers every N/8 iterations
+    is_bitrevA = ( (step & ((N / 8) - 1)) == 0) ? !is_bitrevA: is_bitrevA;
 
-        write_channel_intel(chaninfft2[0], buf[where_write]);               // 0
-        write_channel_intel(chaninfft2[1], buf[where_write + 4 * (N / 8) * N]);   // 32
-        write_channel_intel(chaninfft2[2], buf[where_write + 2 * (N / 8) * N]);   // 16
-        write_channel_intel(chaninfft2[3], buf[where_write + 6 * (N / 8) * N]);   // 48
-        write_channel_intel(chaninfft2[4], buf[where_write + (N / 8) * N]);       // 8
-        write_channel_intel(chaninfft2[5], buf[where_write + 5 * (N / 8) * N]);   // 40
-        write_channel_intel(chaninfft2[6], buf[where_write + 3 * (N / 8) * N]);   // 24
-        write_channel_intel(chaninfft2[7], buf[where_write + 7 * (N / 8) * N]);   // 54
-      }
+    unsigned row = step & (DEPTH - 1);
+    data = bitreverse_in(data,
+      is_bitrevA ? bitrev_in[0] : bitrev_in[1], 
+      is_bitrevA ? bitrev_in[1] : bitrev_in[0], 
+      row);
+
+    writeBuf(data,
+      is_bufA ? buf[0] : buf[1],
+      step, DELAY);
+
+    data_out = readBuf(
+      is_bufA ? buf[1] : buf[0], 
+      step);
+
+    unsigned start_row = (step + DELAY) & (DEPTH -1);
+    data_out = bitreverse_out(
+      is_bitrevA ? bitrev_out[0] : bitrev_out[1],
+      is_bitrevA ? bitrev_out[1] : bitrev_out[0],
+      data_out, start_row);
+
+
+    if (step >= (DEPTH)) {
+      write_channel_intel(chaninfft3db[0], data_out.i0);
+      write_channel_intel(chaninfft3db[1], data_out.i1);
+      write_channel_intel(chaninfft3db[2], data_out.i2);
+      write_channel_intel(chaninfft3db[3], data_out.i3);
+      write_channel_intel(chaninfft3db[4], data_out.i4);
+      write_channel_intel(chaninfft3db[5], data_out.i5);
+      write_channel_intel(chaninfft3db[6], data_out.i6);
+      write_channel_intel(chaninfft3db[7], data_out.i7);
     }
   }
-
-  for(unsigned p = 0; p < N; p++){
-
-    for(unsigned i = 0; i < N; i++){
-      for(unsigned j = 0; j < (N / 8); j++){
-        where = ((i << LOGN) + (j << LOGPOINTS));
-        
-        buf[where + 0] = read_channel_intel(chanoutfft[0]);
-        buf[where + 1] = read_channel_intel(chanoutfft[1]);
-        buf[where + 2] = read_channel_intel(chanoutfft[2]);
-        buf[where + 3] = read_channel_intel(chanoutfft[3]);
-        buf[where + 4] = read_channel_intel(chanoutfft[4]);
-        buf[where + 5] = read_channel_intel(chanoutfft[5]);
-        buf[where + 6] = read_channel_intel(chanoutfft[6]);
-        buf[where + 7] = read_channel_intel(chanoutfft[7]);
-      }
-    }
-
-    for(unsigned i = 0; i < N; i++){
-      revcolt = bit_reversed(i, LOGN);
-      where = ( (i << (LOGN + LOGN)) + (p << LOGN));
-
-      #pragma unroll 8
-      for( unsigned q = 0; q < N; q++){
-        dest[where + q] = buf[(q << LOGN) + revcolt];
-      }
-    }
-
-  }
-
 }
 
 kernel void fft3db(int inverse) {
@@ -208,110 +193,303 @@ kernel void fft3db(int inverse) {
    */
 
   float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
-  for( int j = 0; j < N; j++){
 
-      for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
-        float2x8 data;
+  #pragma loop_coalesce
+  for(unsigned j = 0; j < N; j++){
+    for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
+      float2x8 data;
 
-        // Read data from channels
-        if (i < N * (N / POINTS)) {
-          data.i0 = read_channel_intel(chaninfft2[0]);
-          data.i1 = read_channel_intel(chaninfft2[1]);
-          data.i2 = read_channel_intel(chaninfft2[2]);
-          data.i3 = read_channel_intel(chaninfft2[3]);
-          data.i4 = read_channel_intel(chaninfft2[4]);
-          data.i5 = read_channel_intel(chaninfft2[5]);
-          data.i6 = read_channel_intel(chaninfft2[6]);
-          data.i7 = read_channel_intel(chaninfft2[7]);
-        } else {
-          data.i0 = data.i1 = data.i2 = data.i3 = 
-                    data.i4 = data.i5 = data.i6 = data.i7 = 0;
-        }
-
-        // Perform one FFT step
-        data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
-
-        // Write result to channels
-        if (i >= N / POINTS - 1) {
-          write_channel_intel(chanoutfft2[0], data.i0);
-          write_channel_intel(chanoutfft2[1], data.i1);
-          write_channel_intel(chanoutfft2[2], data.i2);
-          write_channel_intel(chanoutfft2[3], data.i3);
-          write_channel_intel(chanoutfft2[4], data.i4);
-          write_channel_intel(chanoutfft2[5], data.i5);
-          write_channel_intel(chanoutfft2[6], data.i6);
-          write_channel_intel(chanoutfft2[7], data.i7);
-        }
+      if (i < N * (N / POINTS)) {
+        data.i0 = read_channel_intel(chaninfft3db[0]);
+        data.i1 = read_channel_intel(chaninfft3db[1]);
+        data.i2 = read_channel_intel(chaninfft3db[2]);
+        data.i3 = read_channel_intel(chaninfft3db[3]);
+        data.i4 = read_channel_intel(chaninfft3db[4]);
+        data.i5 = read_channel_intel(chaninfft3db[5]);
+        data.i6 = read_channel_intel(chaninfft3db[6]);
+        data.i7 = read_channel_intel(chaninfft3db[7]);
+      } else {
+        data.i0 = data.i1 = data.i2 = data.i3 = 
+                  data.i4 = data.i5 = data.i6 = data.i7 = 0;
       }
 
-   }
+      data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
+
+      if (i >= N / POINTS - 1) {
+        write_channel_intel(chaninTranspose3D[0], data.i0);
+        write_channel_intel(chaninTranspose3D[1], data.i1);
+        write_channel_intel(chaninTranspose3D[2], data.i2);
+        write_channel_intel(chaninTranspose3D[3], data.i3);
+        write_channel_intel(chaninTranspose3D[4], data.i4);
+        write_channel_intel(chaninTranspose3D[5], data.i5);
+        write_channel_intel(chaninTranspose3D[6], data.i6);
+        write_channel_intel(chaninTranspose3D[7], data.i7);
+      }
+    }
+  }
 }
 
-// Stores data for 3rd dim FFT 
-kernel void transpose3D(){
-  unsigned revcolt, where;
-  unsigned where_test;
+kernel void transpose3D() {
 
-  local float2 buf_3d[N * N * N];
-  local float2 buf[N * N];
+  const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
+  bool is_bufA = false, is_bitrevA = false;
 
-  // perform N*N*N writes to buffer
-  for(unsigned m = 0; m < N; m++){
-
-    for(unsigned i = 0; i < N; i++){
-      for(unsigned j = 0; j < (N / 8); j++){
-        where = ((i << LOGN) + (j << LOGPOINTS));
-        
-        buf[where + 0] = read_channel_intel(chanoutfft2[0]);
-        buf[where + 1] = read_channel_intel(chanoutfft2[1]);
-        buf[where + 2] = read_channel_intel(chanoutfft2[2]);
-        buf[where + 3] = read_channel_intel(chanoutfft2[3]);
-        buf[where + 4] = read_channel_intel(chanoutfft2[4]);
-        buf[where + 5] = read_channel_intel(chanoutfft2[5]);
-        buf[where + 6] = read_channel_intel(chanoutfft2[6]);
-        buf[where + 7] = read_channel_intel(chanoutfft2[7]);
-      }
-    }
-
-    for(unsigned i = 0; i < N; i++){
-      revcolt = bit_reversed(i, LOGN);
-      where = (i << LOGN) + (m << (LOGN + LOGN));
-      
-      #pragma unroll 8
-      for( unsigned u = 0; u < N; u++){
-        buf_3d[where + u] = buf[(u << LOGN) + revcolt];
-      }
-    }
-
-  }
-
-  // Flush entire 3d buffer transposed through channels
-  for(unsigned m = 0; m < N; m++){
-
-    for(unsigned i = 0; i < N; i++){
-      where = ((i << (LOGN + LOGN)) + ( m << LOGN));
-
-      #pragma unroll 8
-      for(unsigned u = 0; u < N; u++){
-        buf[(i << LOGN) + u] = buf_3d[where + u];
-      }
-    }
-
-    for( unsigned i = 0; i < N; i++){
-      for( unsigned j = 0; j < (N / 8); j++){
-        where = (j * N * 8) + i;
+  float2 buf[2][DEPTH][POINTS];
+  local float2 buf3D[N * N * N];
+  //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  float2 bitrev_in[2][N];
   
-        write_channel_intel(chaninfetch[0], buf[where + (0 << LOGN)]);
-        write_channel_intel(chaninfetch[1], buf[where + (1 << LOGN)]);
-        write_channel_intel(chaninfetch[2], buf[where + (2 << LOGN)]);
-        write_channel_intel(chaninfetch[3], buf[where + (3 << LOGN)]);
-        write_channel_intel(chaninfetch[4], buf[where + (4 << LOGN)]);
-        write_channel_intel(chaninfetch[5], buf[where + (5 << LOGN)]);
-        write_channel_intel(chaninfetch[6], buf[where + (6 << LOGN)]);
-        write_channel_intel(chaninfetch[7], buf[where + (7 << LOGN)]);
-      }
-    }
+  int initial_delay = DELAY; // for each of the bitrev buffer
+  // additional iterations to fill the buffers
+  for(int step = -initial_delay; step < ((N * DEPTH) + DEPTH); step++){
 
+    float2x8 data, data_out;
+    if (step < ((N * DEPTH) - initial_delay)) {
+      data.i0 = read_channel_intel(chaninTranspose3D[0]);
+      data.i1 = read_channel_intel(chaninTranspose3D[1]);
+      data.i2 = read_channel_intel(chaninTranspose3D[2]);
+      data.i3 = read_channel_intel(chaninTranspose3D[3]);
+      data.i4 = read_channel_intel(chaninTranspose3D[4]);
+      data.i5 = read_channel_intel(chaninTranspose3D[5]);
+      data.i6 = read_channel_intel(chaninTranspose3D[6]);
+      data.i7 = read_channel_intel(chaninTranspose3D[7]);
+    } else {
+      data.i0 = data.i1 = data.i2 = data.i3 = 
+                data.i4 = data.i5 = data.i6 = data.i7 = 0;
+    }
+    // Swap buffers every N*N/8 iterations 
+    // starting from the additional delay of N/8 iterations
+    is_bufA = (( step & (DEPTH - 1)) == 0) ? !is_bufA: is_bufA;
+
+    // Swap bitrev buffers every N/8 iterations
+    is_bitrevA = ( (step & ((N / 8) - 1)) == 0) ? !is_bitrevA: is_bitrevA;
+
+    unsigned row = step & (DEPTH - 1);
+    data = bitreverse_in(data,
+      is_bitrevA ? bitrev_in[0] : bitrev_in[1], 
+      is_bitrevA ? bitrev_in[1] : bitrev_in[0], 
+      row);
+
+    writeBuf(data,
+      is_bufA ? buf[0] : buf[1],
+      step, 0);
+
+    data_out = readBuf_store(
+      is_bufA ? buf[1] : buf[0], 
+      step);
+
+    if (step >= (DEPTH)) {
+      unsigned index = (step - DEPTH) * 8;
+
+      buf3D[index + 0] = data_out.i0;
+      buf3D[index + 1] = data_out.i1;
+      buf3D[index + 2] = data_out.i2;
+      buf3D[index + 3] = data_out.i3;
+      buf3D[index + 4] = data_out.i4;
+      buf3D[index + 5] = data_out.i5;
+      buf3D[index + 6] = data_out.i6;
+      buf3D[index + 7] = data_out.i7;
+    }
   }
 
+  is_bufA = false;
+  is_bitrevA = false;
+  
+  float2 __attribute__((memory, numbanks(8))) bitrev_out[2][N];
+  
+  // additional iterations to fill the buffers
+  for(unsigned step = 0; step < (N * DEPTH) + DEPTH + DELAY; step++){
+    // increment z by 1 every N/8 steps until (N*N/ 8)
+    unsigned start_index = step + DELAY;
+    unsigned zdim = (step >> (LOGN - LOGPOINTS)) & (N - 1); 
+
+    // increment y by 1 every N*N/8 points until N
+    unsigned ydim = (step >> (LOGN + LOGN - LOGPOINTS)) & (N - 1);
+
+    // increment by 8 until N / 8
+    unsigned xdim = (step * 8) & (N - 1);
+
+    // increment by 1 every N*N*N / 8 steps
+    unsigned batch_index = (step >> (LOGN + LOGN + LOGN - LOGPOINTS));
+
+    unsigned index = (batch_index * N * N * N) + (zdim * N * N) + (ydim * N) + xdim; 
+
+    float2x8 data, data_out;
+    if (step < (N * DEPTH)) {
+      data.i0 = buf3D[index + 0];
+      data.i1 = buf3D[index + 1];
+      data.i2 = buf3D[index + 2];
+      data.i3 = buf3D[index + 3];
+      data.i4 = buf3D[index + 4];
+      data.i5 = buf3D[index + 5];
+      data.i6 = buf3D[index + 6];
+      data.i7 = buf3D[index + 7];
+    } else {
+      data.i0 = data.i1 = data.i2 = data.i3 = 
+                data.i4 = data.i5 = data.i6 = data.i7 = 0;
+    }
+  
+    is_bufA = (( step & (DEPTH - 1)) == 0) ? !is_bufA: is_bufA;
+
+    // Swap bitrev buffers every N/8 iterations
+    is_bitrevA = ( (step & ((N / 8) - 1)) == 0) ? !is_bitrevA: is_bitrevA;
+
+    writeBuf(data,
+      is_bufA ? buf[0] : buf[1],
+      step, 0);
+
+    data_out = readBuf_fetch(
+      is_bufA ? buf[1] : buf[0], 
+      step, 0);
+
+    unsigned start_row = step & (DEPTH -1);
+    data_out = bitreverse_out(
+      is_bitrevA ? bitrev_out[0] : bitrev_out[1],
+      is_bitrevA ? bitrev_out[1] : bitrev_out[0],
+      data_out, start_row);
+
+    if (step >= (DEPTH + DELAY)) {
+
+      write_channel_intel(chaninfft3dc[0], data_out.i0);
+      write_channel_intel(chaninfft3dc[1], data_out.i1);
+      write_channel_intel(chaninfft3dc[2], data_out.i2);
+      write_channel_intel(chaninfft3dc[3], data_out.i3);
+      write_channel_intel(chaninfft3dc[4], data_out.i4);
+      write_channel_intel(chaninfft3dc[5], data_out.i5);
+      write_channel_intel(chaninfft3dc[6], data_out.i6);
+      write_channel_intel(chaninfft3dc[7], data_out.i7);
+    }
+  }
+}
+
+/*
+ * Input and output data in bit-reversed format
+ */
+kernel void fft3dc(int inverse) {
+
+  /* The FFT engine requires a sliding window for data reordering; data stored
+   * in this array is carried across loop iterations and shifted by 1 element
+   * every iteration; all loop dependencies derived from the uses of this 
+   * array are simple transfers between adjacent array elements
+   */
+
+  float2 fft_delay_elements[N + POINTS * (LOGN - 2)];
+
+  #pragma loop_coalesce
+  for(unsigned j = 0; j < N; j++){
+
+    for (unsigned i = 0; i < N * (N / POINTS) + N / POINTS - 1; i++) {
+      float2x8 data;
+
+      if (i < N * (N / POINTS)) {
+        data.i0 = read_channel_intel(chaninfft3dc[0]);
+        data.i1 = read_channel_intel(chaninfft3dc[1]);
+        data.i2 = read_channel_intel(chaninfft3dc[2]);
+        data.i3 = read_channel_intel(chaninfft3dc[3]);
+        data.i4 = read_channel_intel(chaninfft3dc[4]);
+        data.i5 = read_channel_intel(chaninfft3dc[5]);
+        data.i6 = read_channel_intel(chaninfft3dc[6]);
+        data.i7 = read_channel_intel(chaninfft3dc[7]);
+      } else {
+        data.i0 = data.i1 = data.i2 = data.i3 = 
+                  data.i4 = data.i5 = data.i6 = data.i7 = 0;
+      }
+
+      // Perform one FFT step
+      data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
+
+      // Write result to channels
+      if (i >= N / POINTS - 1) {
+        write_channel_intel(chaninTranStore[0], data.i0);
+        write_channel_intel(chaninTranStore[1], data.i1);
+        write_channel_intel(chaninTranStore[2], data.i2);
+        write_channel_intel(chaninTranStore[3], data.i3);
+        write_channel_intel(chaninTranStore[4], data.i4);
+        write_channel_intel(chaninTranStore[5], data.i5);
+        write_channel_intel(chaninTranStore[6], data.i6);
+        write_channel_intel(chaninTranStore[7], data.i7);
+      }
+    }
+  }
+}
+
+kernel void store(global float2 * restrict dest) {
+
+  const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
+  bool is_bufA = false, is_bitrevA = false;
+
+  float2 buf[2][DEPTH][POINTS];
+  float2 bitrev_in[2][N];
+  //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
+  
+  int initial_delay = DELAY; // for each of the bitrev buffer
+  // additional iterations to fill the buffers
+  for(int step = -initial_delay; step < ((N * DEPTH) + DEPTH); step++){
+
+    float2x8 data, data_out;
+    if (step < ((N * DEPTH) - initial_delay)) {
+      data.i0 = read_channel_intel(chaninTranStore[0]);
+      data.i1 = read_channel_intel(chaninTranStore[1]);
+      data.i2 = read_channel_intel(chaninTranStore[2]);
+      data.i3 = read_channel_intel(chaninTranStore[3]);
+      data.i4 = read_channel_intel(chaninTranStore[4]);
+      data.i5 = read_channel_intel(chaninTranStore[5]);
+      data.i6 = read_channel_intel(chaninTranStore[6]);
+      data.i7 = read_channel_intel(chaninTranStore[7]);
+    } else {
+      data.i0 = data.i1 = data.i2 = data.i3 = 
+                data.i4 = data.i5 = data.i6 = data.i7 = 0;
+    }
+    // Swap buffers every N*N/8 iterations 
+    // starting from the additional delay of N/8 iterations
+    is_bufA = (( step & (DEPTH - 1)) == 0) ? !is_bufA: is_bufA;
+
+    // Swap bitrev buffers every N/8 iterations
+    is_bitrevA = ( (step & ((N / 8) - 1)) == 0) ? !is_bitrevA: is_bitrevA;
+
+    unsigned row = step & (DEPTH - 1);
+    data = bitreverse_in(data,
+      is_bitrevA ? bitrev_in[0] : bitrev_in[1], 
+      is_bitrevA ? bitrev_in[1] : bitrev_in[0], 
+      row);
+
+    writeBuf(data,
+      is_bufA ? buf[0] : buf[1],
+      step, 0);
+
+    data_out = readBuf_store(
+      is_bufA ? buf[1] : buf[0], 
+      step);
+
+    if (step >= (DEPTH)) {
+      unsigned start_index = (step - DEPTH);
+      // increment z by 1 every N/8 steps until (N*N/ 8)
+      unsigned zdim = (start_index >> (LOGN - LOGPOINTS)) & (N - 1); 
+
+      // increment y by 1 every N*N/8 points until N
+      unsigned ydim = (start_index >> (LOGN + LOGN - LOGPOINTS)) & (N - 1);
+
+      // incremenet by 8 until N / 8
+      unsigned xdim = (start_index * 8) & ( N - 1);
+      //unsigned index = (step - DEPTH) * 8;
+
+      // increment by N*N*N
+      unsigned cube = LOGN + LOGN + LOGN - LOGPOINTS;
+
+      // increment by 1 every N*N*N / 8 steps
+      unsigned batch_index = (start_index >> cube);
+      //unsigned batch_index = 0;
+
+      unsigned index = (batch_index * N * N * N) + (zdim * N * N) + (ydim * N) + xdim; 
+
+      dest[index + 0] = data_out.i0;
+      dest[index + 1] = data_out.i1;
+      dest[index + 2] = data_out.i2;
+      dest[index + 3] = data_out.i3;
+      dest[index + 4] = data_out.i4;
+      dest[index + 5] = data_out.i5;
+      dest[index + 6] = data_out.i6;
+      dest[index + 7] = data_out.i7;
+    }
+  }
 }

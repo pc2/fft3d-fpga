@@ -6,8 +6,9 @@ fpgabitstream/
 reports/
 vscode/
 scripts/
-build_svm/
+build*
 svm_build/
+debug*
 
 tags
 *.DS_Store
