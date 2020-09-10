@@ -30,6 +30,7 @@ int main(int argc, const char **argv) {
   fpga_t timing = {0.0, 0.0, 0.0, 0};
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
+  double data_timer = 0.0;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -74,13 +75,16 @@ int main(int argc, const char **argv) {
   for(size_t i = 0; i < iter; i++){
 
     // create and destroy data every iteration
+    data_timer = getTimeinMilliseconds();
     status = fftf_create_data(inp, N * N * N);
+    data_timer = getTimeinMilliseconds() - data_timer;
     if(!status){
       fprintf(stderr, "Error in Data Creation \n");
       free(inp);
       free(out);
       return EXIT_FAILURE;
     }
+    printf("Time to Create Data: %lfsec for %uMB\n", data_timer * 1e-3, (N*N*N* 8 / (1024 * 1024)));
 
     // use ddr for 3d Transpose
     temp_timer = getTimeinMilliseconds();

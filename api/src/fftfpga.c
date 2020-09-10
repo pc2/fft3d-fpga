@@ -395,7 +395,7 @@ fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, bool inv, int batch){
 fpga_t fftfpgaf_c2c_1d_svm(int N, float2 *inp, float2 *out, bool inv, int batch){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_int status = 0;
-  int num_pts = N * N * N;
+  int num_pts = N * batch;
   
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
@@ -403,7 +403,7 @@ fpga_t fftfpgaf_c2c_1d_svm(int N, float2 *inp, float2 *out, bool inv, int batch)
   }
 
 #ifdef VERBOSE
-  printf("Launching%s 3d FFT transform in DDR \n", inv ? " inverse":"");
+  printf("Launching%s 1D FFT transform in DDR \n", inv ? " inverse":"");
 #endif
 
   // Can't pass bool to device, so convert it to int
@@ -1080,17 +1080,17 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
   checkError(status, "Failed to set fftb kernel arg");
 
   // kernel stores to DDR memory
-  status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_inOutData);
+  status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void*)&d_inOutData);
   checkError(status, "Failed to set store1 kernel arg");
 
   // kernel fetches from DDR memory
-  status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_inOutData);
+  status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void*)&d_inOutData);
   checkError(status, "Failed to set fetch2 kernel arg");
   status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
   checkError(status, "Failed to set fftc kernel arg");
 
   // kernel stores using SVM based PCIe to host
-  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData);
+  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void*)h_outData);
   checkError(status, "Failed to set store2 kernel arg");
 
   fft_time.exec_t = getTimeinMilliSec();
