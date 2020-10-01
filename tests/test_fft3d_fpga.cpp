@@ -104,7 +104,7 @@ TEST(fftFPGATest, ValidSp3dFFTDDR){
   const int N = (1 << 6);
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
 
-  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_ddr_triv/fft3d_ddr_triv.aocx", 0);
+  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_ddr/fft3d_ddr.aocx", 0);
   ASSERT_EQ(isInit, 0);
 
   size_t sz = sizeof(float2) * N * N * N;
@@ -170,7 +170,7 @@ TEST(fftFPGATest, ValidSp3dFFTDDRSVMBatch){
   const int N = (1 << 6);
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
 
-  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_ddr_triv/fft3d_ddr_triv.aocx", 0);
+  int isInit = fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_ddr/fft3d_ddr.aocx", 0);
   ASSERT_EQ(isInit, 0);
 
   // Random number of batches between 1 and 10
