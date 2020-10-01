@@ -10,7 +10,7 @@ build-all:
   script:
     - rm -rf build
     - mkdir -p build && cd build
-    - cmake -DLOG_FFT_SIZE=6 ..
+    - cmake -DLOG_FFT_SIZE=6 -DCMAKE_BUILD_TYPE=Release ..
     - make
     - make fft1d_emu
     - make fft2d_ddr_emu
