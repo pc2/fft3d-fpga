@@ -106,6 +106,17 @@ extern fpga_t fftfpgaf_c2c_1d(int N, float2 *inp, float2 *out, bool inv, int ite
 extern fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, int interleaving, int how_many);
 
 /**
+ * @brief  compute an out-of-place single precision complex 2DFFT using the BRAM of the FPGA and Shared Virtual Memory for Host to Device Communication
+ * @param  N    : integer pointer to size of FFT2d  
+ * @param  inp  : float2 pointer to input data of size [N * N]
+ * @param  out  : float2 pointer to output data of size [N * N]
+ * @param  inv  : int toggle to activate backward FFT
+ * @param  how_many : number of 2D FFTs to computer, default 1
+ * @return fpga_t : time taken in milliseconds for data transfers and execution
+ */
+extern fpga_t fftfpgaf_c2c_2d_bram_svm(int N, float2 *inp, float2 *out, bool inv, int how_many);
+
+/**
  * @brief  compute an out-of-place single precision complex 2D-FFT using the DDR of the FPGA
  * @param  N    : integer pointer to size of FFT2d  
  * @param  inp  : float2 pointer to input data of size [N * N]
@@ -136,6 +147,14 @@ extern fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bo
  */
 extern fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv);
 
+/**
+ * @brief  compute an out-of-place single precision complex 3D-FFT using the DDR of the FPGA and Shared Virtual Memory for Host to Device Communication
+ * @param  N    : integer pointer addressing the size of FFT3d  
+ * @param  inp  : float2 pointer to input data of size [N * N * N]
+ * @param  out  : float2 pointer to output data of size [N * N * N]
+ * @param  inv  : int toggle to activate backward FFT
+ * @return fpga_t : time taken in milliseconds for data transfers and execution
+ */
 extern fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv);
 
 extern fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, bool inv, int how_many);

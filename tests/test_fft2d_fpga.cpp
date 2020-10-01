@@ -58,7 +58,7 @@ TEST(fft2dFPGATest, CorrectnessBRAM){
 
   fft_time = fftfpgaf_c2c_2d_bram(N, inp, out, 0, 0, 1);
 
-  int result = verify_sp_fft2d_fftw(out, inp, N, 0);
+  int result = verify_fftwf(out, inp, N, 2, 0, 1);
 
   EXPECT_EQ(result, 1);
 
@@ -115,7 +115,7 @@ TEST(fftFPGATest, ValidSp2dFFTDDR){
 
   fft_time = fftfpgaf_c2c_2d_ddr(N, inp, out, 0);
 
-  int result = verify_sp_fft2d_fftw(out, inp, N, 0);
+  int result = verify_fftwf(out, inp, N, 2, 0, 1);
 
   EXPECT_EQ(result, 1);
 

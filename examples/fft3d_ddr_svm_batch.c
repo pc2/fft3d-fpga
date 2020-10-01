@@ -89,7 +89,7 @@ int main(int argc, const char **argv) {
     total_api_time += getTimeinMilliseconds() - temp_timer;
 
 #ifdef USE_FFTW
-    if(!verify_sp_fft3d_fftw(out, inp, N, inv, batch)){
+    if(!verify_fftwf(out, inp, N, 3, inv, batch)){
       fprintf(stderr, "3d FFT Verification Failed \n");
       free(inp);
       free(out);

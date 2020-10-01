@@ -3,8 +3,8 @@
 #ifndef FFT3D_FFTW_H
 #define FFT3D_FFTW_H
 
-int verify_sp_fft2d_fftw(float2 *fpgaout, float2 *verify, int N, bool inverse);
+#include<stdbool.h>
 
-int verify_sp_fft3d_fftw(float2 *fpgaout, float2 *verify, int N, bool inverse, int how_many);
+bool verify_fftwf(float2 *fpgaout, float2 *verify, int N, int dim, bool inverse, int how_many);
 
 #endif // FFT3D_FFTW_H

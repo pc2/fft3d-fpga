@@ -99,7 +99,7 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   double pcie_write = pcie_wr / iter;
   double exec = exec_t / iter;
 
-  double gpoints_per_sec = (pow(N, dim)  / (exec * 1e-3)) * 1e-9;
+  double gpoints_per_sec = (batch * pow(N, dim))  / (exec * 1e-3 * 1024 * 1024 * 1024);
   double gBytes_per_sec = 0.0;
 
   if(sp){
@@ -109,7 +109,7 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
     gBytes_per_sec *=  gpoints_per_sec * 16;
   }
 
-  double gflops = dim * 5 * pow(N, dim) * (log((double)N)/log((double)2))/(exec * 1e-3 * 1E9); 
+  double gflops = batch * dim * 5 * pow(N, dim) * (log((double)N)/log((double)2))/(exec * 1e-3 * 1024*1024*1024); 
 
   printf("\n\n------------------------------------------\n");
   printf("Measurements \n");
