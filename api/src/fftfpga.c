@@ -1550,7 +1550,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
   int num_pts = N * N * N;
   
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (how_many <= 0)){
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (how_many <= 1)){
     return fft_time;
   }
 
@@ -1676,80 +1676,17 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
   clWaitForEvents(1, &write_event[0]);
   clReleaseEvent(write_event[0]);
 
-  status = clEnqueueReadBuffer(queue6, d_outData1, CL_FALSE, 0, sizeof(float2) * num_pts, out, 0, NULL, &write_event[0]);
-  checkError(status, "Failed to read from DDR buffer");
-
-  status=clSetKernelArg(fetch1_kernel, 0, sizeof(cl_mem), (void *)&d_inData2);
-  checkError(status, "Failed to set fetch1 kernel arg");
-
-  status=clSetKernelArg(store2_kernel, 0, sizeof(cl_mem), (void *)&d_outData2);
-  checkError(status, "Failed to set store2 kernel arg");
-
-  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fetch kernel");
-
-  status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fft kernel");
-
-  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose kernel");
-
-  status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch second fft kernel");
-
-  status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch second transpose kernel");
-
-  status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fetch kernel");
-
-  status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fft kernel");
-
-  status = clEnqueueTask(queue3, store2_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose kernel");
-
-  // Check finish of transfer and computations
-  status = clFinish(queue6);
-  checkError(status, "failed to finish");
-  status = clFinish(queue5);
-  checkError(status, "failed to finish");
-  status = clFinish(queue4);
-  checkError(status, "failed to finish");
-  status = clFinish(queue3);
-  checkError(status, "failed to finish");
-  status = clFinish(queue2);
-  checkError(status, "failed to finish");
-  status = clFinish(queue1);
-  checkError(status, "failed to finish");
-
-  clWaitForEvents(1, &write_event[0]);
-  clReleaseEvent(write_event[0]);
-
-  status = clEnqueueReadBuffer(queue6, d_outData2, CL_FALSE, 0, sizeof(float2) * num_pts, &out[num_pts], 0, NULL, &write_event[1]);
-  checkError(status, "Failed to read from DDR buffer");
-
-  status = clFinish(queue6);
-  checkError(status, "failed to finish reading DDR using PCIe");
-
-  clWaitForEvents(1, &write_event[1]);
-  fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
-  checkError(status, "Failed to copy data from device");
-
-  clReleaseEvent(write_event[1]);
-  queue_cleanup();
-
   // Loop over the 3 stages
-  /*
-  for(size_t i = 2; i < how_many - 1; i++){
+  
+  for(size_t i = 2; i < how_many; i++){
 
     // Unblocking transfers between DDR and host 
     if( (i % 2) == 0){
-      status = clEnqueueWriteBuffer(queue7, d_inData1, CL_FALSE, 0, sizeof(float2) * num_pts, &inp[(i * num_pts)], 0, NULL, &write_event[0]);
-      checkError(status, "Failed to write to DDR buffer");
-
-      status = clEnqueueReadBuffer(queue6, d_outData1, CL_FALSE, 0, sizeof(float2) * num_pts, &out[((i - 2) * num_pts)], 0, NULL, &write_event[1]);
+      status = clEnqueueReadBuffer(queue6, d_outData1, CL_FALSE, 0, sizeof(float2) * num_pts, &out[((i - 2) * num_pts)], 0, NULL, &write_event[0]);
       checkError(status, "Failed to read from DDR buffer");
+
+      status = clEnqueueWriteBuffer(queue7, d_inData1, CL_FALSE, 0, sizeof(float2) * num_pts, &inp[(i * num_pts)], 0, NULL, &write_event[1]);
+      checkError(status, "Failed to write to DDR buffer");
 
       status=clSetKernelArg(fetch1_kernel, 0, sizeof(cl_mem), (void *)&d_inData2);
       checkError(status, "Failed to set fetch1 kernel arg");
@@ -1758,11 +1695,11 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
       checkError(status, "Failed to set store2 kernel arg");
     }
     else{
-      status = clEnqueueWriteBuffer(queue7, d_inData2, CL_FALSE, 0, sizeof(float2) * num_pts, &inp[(i * num_pts)], 0, NULL, &write_event[0]);
-      checkError(status, "Failed to write to DDR buffer");
-
-      status = clEnqueueReadBuffer(queue6, d_outData2, CL_FALSE, 0, sizeof(float2) * num_pts, &out[((i - 2) * num_pts)], 0, NULL, &write_event[1]);
+      status = clEnqueueReadBuffer(queue6, d_outData2, CL_FALSE, 0, sizeof(float2) * num_pts, &out[((i - 2) * num_pts)], 0, NULL, &write_event[0]);
       checkError(status, "Failed to read from DDR buffer");
+
+      status = clEnqueueWriteBuffer(queue7, d_inData2, CL_FALSE, 0, sizeof(float2) * num_pts, &inp[(i * num_pts)], 0, NULL, &write_event[1]);
+      checkError(status, "Failed to write to DDR buffer");
 
       status=clSetKernelArg(fetch1_kernel, 0, sizeof(cl_mem), (void *)&d_inData1);
       checkError(status, "Failed to set fetch1 kernel arg");
@@ -1816,7 +1753,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
     clReleaseEvent(write_event[1]);
   }
 
-  if( (N % 2) == 1){
+  if( (how_many % 2) == 0){
     status = clEnqueueReadBuffer(queue6, d_outData1, CL_FALSE, 0, sizeof(float2) * num_pts, &out[(how_many - 2) * num_pts], 0, NULL, &write_event[0]);
     checkError(status, "Failed to read from DDR buffer");
 
@@ -1873,27 +1810,29 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
   checkError(status, "failed to finish");
   status = clFinish(queue1);
   checkError(status, "failed to finish");
+
+  clWaitForEvents(1, &write_event[0]);
+  clReleaseEvent(write_event[0]);
+
   if( (how_many % 2) == 0){
-    status = clEnqueueReadBuffer(queue6, d_outData2, CL_FALSE, 0, sizeof(float2) * num_pts, &out[(how_many - 1) * num_pts], 0, NULL, &write_event[1]);
+    status = clEnqueueReadBuffer(queue6, d_outData2, CL_FALSE, 0, sizeof(float2) * num_pts, &out[(how_many - 1) * num_pts], 0, NULL, &write_event[0]);
     checkError(status, "Failed to read from DDR buffer");
   }
   else{
-    status = clEnqueueReadBuffer(queue6, d_outData1, CL_FALSE, 0, sizeof(float2) * num_pts, &out[(how_many - 1) * num_pts], 0, NULL, &write_event[1]);
+    status = clEnqueueReadBuffer(queue6, d_outData1, CL_FALSE, 0, sizeof(float2) * num_pts, &out[(how_many - 1) * num_pts], 0, NULL, &write_event[0]);
     checkError(status, "Failed to read from DDR buffer");
   }
 
   status = clFinish(queue6);
   checkError(status, "failed to finish reading DDR using PCIe");
 
-  clWaitForEvents(2, write_event);
+  clWaitForEvents(1, &write_event[0]);
+  clReleaseEvent(write_event[0]);
+
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
   checkError(status, "Failed to copy data from device");
   
-
-  clReleaseEvent(write_event[0]);
-  clReleaseEvent(write_event[1]);
   queue_cleanup();
-  */
 
   if (d_inData1)
     clReleaseMemObject(d_inData1);
