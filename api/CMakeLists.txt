@@ -10,6 +10,9 @@ project(fftfpga VERSION 0.3
 ##
 add_library(${PROJECT_NAME} STATIC 
               ${PROJECT_SOURCE_DIR}/src/fftfpga.c 
+              ${PROJECT_SOURCE_DIR}/src/fft3d.c
+              ${PROJECT_SOURCE_DIR}/src/fft2d.c
+              ${PROJECT_SOURCE_DIR}/src/fft1d.c
               ${PROJECT_SOURCE_DIR}/src/svm.c
               ${PROJECT_SOURCE_DIR}/src/opencl_utils.c
               ${PROJECT_SOURCE_DIR}/src/misc.c)
