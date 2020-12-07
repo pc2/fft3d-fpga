@@ -1,5 +1,5 @@
-build/
-debug/
+build*/
+debug*/
 test/
 bin/
 fpgabitstream/

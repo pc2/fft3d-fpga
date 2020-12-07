@@ -1,5 +1,5 @@
 # Author: Arjun Ramaswami
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.10.3)
 
 project(fft)
 
@@ -31,13 +31,7 @@ find_package(IntelFPGAOpenCL REQUIRED)
 
 # Find FFTW
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/extern/findFFTW)
-
-find_package(FFTW)
-if(FFTW_FOUND)
-  message("-- FFTW library found")
-else()
-  message(WARNING, "FFTW library not found")
-endif()
+find_package(FFTW REQUIRED)
 
 # Link argparse as static library
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/argparse)

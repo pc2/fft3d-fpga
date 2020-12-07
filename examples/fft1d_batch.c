@@ -10,6 +10,7 @@
 
 #include "argparse.h"
 #include "helper.h"
+#include "verify_fftw.h"
 
 static const char *const usage[] = {
     "bin/host [options]",
@@ -34,7 +35,6 @@ int main(int argc, const char **argv) {
     OPT_HELP(),
     OPT_GROUP("Basic Options"),
     OPT_INTEGER('n',"n", &N, "FFT Points"),
-    OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_INTEGER('c',"batch", &batch, "Batch"),
@@ -81,9 +81,17 @@ int main(int argc, const char **argv) {
     }
 
     temp_timer = getTimeinMilliseconds();
-    timing = fftfpgaf_c2c_1d(N, inp, out, inv, batch);
+    timing = fftfpgaf_c2c_1d_batch(N, inp, out, inv, batch);
     total_api_time += getTimeinMilliseconds() - temp_timer;
 
+#ifdef USE_FFTW
+    if(!verify_fftwf(out, inp, N, 1, inv, batch)){
+      fprintf(stderr, "1d FFT Verification Failed \n");
+      free(inp);
+      free(out);
+      return EXIT_FAILURE;
+    }
+#endif
     // TODO: Verification of bit reversed output
     if(timing.valid == 0){
       fprintf(stderr, "Invalid execution, timing found to be 0");
@@ -116,7 +124,6 @@ int main(int argc, const char **argv) {
   // destroy data
   fpga_final();
 
-  // display performance measures
   display_measures(total_api_time, avg_rd, avg_wr, avg_exec, avg_hw_rd, avg_hw_wr, avg_hw_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;

@@ -25,15 +25,15 @@ int main(int argc, const char **argv) {
   char *path = "fft1d_emulate.aocx";
   const char *platform = "Intel(R) FPGA";
 
-  fpga_t timing = {0.0, 0.0, 0.0, 0};
+  fpga_t timing = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
+  double avg_hw_rd = 0.0, avg_hw_wr = 0.0, avg_hw_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
 
   struct argparse_option options[] = {
     OPT_HELP(),
     OPT_GROUP("Basic Options"),
     OPT_INTEGER('n',"n", &N, "FFT Points"),
-    OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_INTEGER('c',"batch", &batch, "Batch"),
@@ -93,11 +93,19 @@ int main(int argc, const char **argv) {
     avg_rd += timing.pcie_read_t;
     avg_wr += timing.pcie_write_t;
     avg_exec += timing.exec_t;
+    avg_hw_rd += timing.hw_pcie_read_t;
+    avg_hw_wr += timing.hw_pcie_write_t;
+    avg_hw_exec += timing.hw_exec_t;
 
     printf("Iter: %lu\n", i);
     printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
     printf("\tKernel: %lfms\n", timing.exec_t);
     printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
+            
+    printf("Hw Counters: \n");
+    printf("\tHW PCIe Rd: %lfms\n", timing.hw_pcie_read_t);
+    printf("\tHW Kernel: %lfms\n", timing.hw_exec_t);
+    printf("\tHW PCIe Wr: %lfms\n\n", timing.hw_pcie_write_t);
             
   }
   // destroy FFT input and output
@@ -107,7 +115,7 @@ int main(int argc, const char **argv) {
   // destroy data
   fpga_final();
 
-  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, batch, inv, sp);
+  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, avg_hw_rd, avg_hw_wr, avg_hw_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;
 }

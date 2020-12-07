@@ -17,10 +17,14 @@ message("-- FFT size is ${FFT_SIZE}")
 math(EXPR DEPTH "1 << (${LOG_FFT_SIZE} + ${LOG_FFT_SIZE} - ${LOG_POINTS})")
 
 #set(BUF_LOC "DDR")
-set(BUFFER_LOCATION "DDR" CACHE STRING "Buffer location of 3d Transpose")
-set_property(CACHE BUFFER_LOCATION PROPERTY STRINGS "DDR" "device")
+set(DDR_BUFFER_LOCATION "DDR" CACHE STRING "Buffer location of 3d Transpose")
+set_property(CACHE DDR_BUFFER_LOCATION PROPERTY STRINGS "DDR" "device")
 
-message("-- Buffer location for 3d Transpose is ${BUFFER_LOCATION}")
+set(SVM_HOST_BUFFER_LOCATION "" CACHE STRING "SVM host buffer location")
+set_property(CACHE SVM_HOST_BUFFER_LOCATION PROPERTY STRINGS "" "host")
+
+message("-- Buffer location for 3d Transpose is ${DDR_BUFFER_LOCATION}")
+message("-- SVM host Buffer location ${SVM_BUFFER_LOCATION}")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/common/fft_config.h.in"
@@ -41,7 +45,7 @@ if(NOT DEFINED FPGA_BOARD_NAME)
 endif()
 
 ## Flags for different target options
-set(AOC_FLAGS "-g -v -fp-relaxed -cl-single-precision-constant -no-interleaving=default" CACHE STRING "AOC compiler flags")
+set(AOC_FLAGS "-g -v -fp-relaxed -cl-single-precision-constant -board-package=/cm/shared/opt/intel_oneapi/beta-10/intelfpgadpcpp/2021.1-beta10/board/intel_s10sx_pac_usm/ -no-interleaving=default" CACHE STRING "AOC compiler flags")
 separate_arguments(AOC_FLAGS)
 set(EMU_FLAGS "-legacy-emulator -march=emulator" CACHE STRING "AOC emulation flags")
 separate_arguments(EMU_FLAGS)

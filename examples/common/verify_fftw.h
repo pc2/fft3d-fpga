@@ -5,6 +5,6 @@
 
 #include<stdbool.h>
 
-bool verify_fftwf(float2 *fpgaout, float2 *verify, int N, int dim, bool inverse, int how_many);
+bool verify_fftwf(float2 *fpgaout, const float2 *verify, int N, int dim, bool inverse, int how_many);
 
 #endif // FFT3D_FFTW_H

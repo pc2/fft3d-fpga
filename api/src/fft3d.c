@@ -25,8 +25,8 @@
  * \param  interleaving : 1 if using burst interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool interleaving) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_3d_bram(int N, const float2 *inp, float2 *out, bool inv, bool interleaving) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
 
   cl_kernel fft3da_kernel = NULL, fft3db_kernel = NULL, fft3dc_kernel = NULL;
@@ -61,16 +61,24 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   d_outData = clCreateBuffer(context, flagbuf2, sizeof(float2) * N * N * N, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
+  cl_event writeBuf_event;
  // Copy data from host to device
   fft_time.pcie_write_t = getTimeinMilliSec();
 
-  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * N * N, inp, 0, NULL, NULL);
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * N * N, inp, 0, NULL, &writeBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish");
 
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
+
+  cl_ulong writeBuf_start = 0.0, writeBuf_end = 0.0;
+
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &writeBuf_start, NULL);
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &writeBuf_end, NULL);
+
+  fft_time.hw_pcie_write_t = (cl_double)(writeBuf_end - writeBuf_start) * (cl_double)(1e-06);
 
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
@@ -109,8 +117,11 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   status = clSetKernelArg(store_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
   checkError(status, "Failed to set store kernel arg 0");
 
+  // Kernel Execution
+  cl_event startExec_event, endExec_event;
+
   fft_time.exec_t = getTimeinMilliSec();
-  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue2, fft3da_kernel, 0, NULL, NULL);
@@ -128,7 +139,7 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   status = clEnqueueTask(queue6, fft3dc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch third fft kernel");
 
-  status = clEnqueueTask(queue7, store_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue7, store_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch store transpose kernel");
 
   // Wait for all command queues to complete pending events
@@ -149,15 +160,29 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
 
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
+  cl_ulong kernel_start = 0, kernel_end = 0;
+
+  clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06); 
+
   // Copy results from device to host
+  cl_event readBuf_event;
   fft_time.pcie_read_t = getTimeinMilliSec();
-  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N * N, out, 0, NULL, NULL);
+  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N * N, out, 0, NULL, &readBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish reading buffer using PCIe");
 
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
+
+  cl_ulong readBuf_start = 0, readBuf_end = 0;
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &readBuf_start, NULL);
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &readBuf_end, NULL);
+
+  fft_time.hw_pcie_read_t = (cl_double)(readBuf_end - readBuf_start) * (cl_double)(1e-06); 
 
   queue_cleanup();
 
@@ -194,33 +219,15 @@ fpga_t fftfpgaf_c2c_3d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
  * \param  interleaving : 1 if using burst interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, bool interleaving) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
   
-  /*
-  const char* board_name;
-  int *bytes;
-  aocl_mmd_offline_info_t info_id;
-  info_id = AOCL_MMD_BOARD_NAMES;
-  aocl_mmd_get_offline_info(info_id, sizeof(char*), &board_name, size_t(int));
-
-  svm_handle = aocl_mmd_open(board_name);
-  if(svm_handle < 0 ){
-    return NULL;
-  }
-  return aocl_mmd_shared_mem_alloc(svm_handle, sz, inData, device_ptr);
-  */
-
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || !(svm_enabled)){
     return fft_time;
   }
-
-#ifdef VERBOSE
-  printf("Launching%s 3d FFT transform in DDR \n", inv ? " inverse":"");
-#endif
 
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
@@ -249,22 +256,33 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
 
   // Device memory buffers
   cl_mem d_inOutData;
-  d_inOutData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
-  checkError(status, "Failed to allocate output device buffer\n");
+  if(!interleaving){
+    d_inOutData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+    checkError(status, "Failed to allocate output device buffer\n");
+  }
+  else{
+    d_inOutData = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float2) * num_pts, NULL, &status);
+    checkError(status, "Failed to allocate output device buffer\n");
+  }
 
   // allocate SVM buffers
   float2 *h_inData, *h_outData;
   h_inData = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
   h_outData = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
 
+  double svmBufferCopyIn_timer = getTimeinMilliSec();
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map input data");
 
   // copy data into h_inData
+  size_t num_bytes = num_pts * sizeof(float2);
+  memcpy(h_inData, inp, num_bytes);
+  /*
   for(size_t i = 0; i < num_pts; i++){
     h_inData[i].x = inp[i].x;
     h_inData[i].y = inp[i].y;
   }
+  */
 
   status = clEnqueueSVMUnmap(queue1, (void *)h_inData, 0, NULL, NULL);
   checkError(status, "Failed to unmap input data");
@@ -280,6 +298,9 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
 
   status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
   checkError(status, "Failed to unmap input data");
+
+  svmBufferCopyIn_timer = getTimeinMilliSec() - svmBufferCopyIn_timer;
+  printf("\nSVM Buffer Copy In Time: %lfms\n", svmBufferCopyIn_timer);
 
   // write to fetch kernel using SVM based PCIe
   status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData);
@@ -304,9 +325,10 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
   status = clSetKernelArgSVMPointer(store2_kernel, 0, (void*)h_outData);
   checkError(status, "Failed to set store2 kernel arg");
 
+  cl_event startExec_event, endExec_event;
+
   fft_time.exec_t = getTimeinMilliSec();
-  double first_half = getTimeinMilliSec();
-  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL,  &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
@@ -321,27 +343,13 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
   status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch second transpose kernel");
 
-  status = clFinish(queue1);
-  checkError(status, "failed to finish");
-  status = clFinish(queue2);
-  checkError(status, "failed to finish");
-  status = clFinish(queue3);
-  checkError(status, "failed to finish");
-  status = clFinish(queue4);
-  checkError(status, "failed to finish");
-  status = clFinish(queue5);
-  checkError(status, "failed to finish");
-  first_half = getTimeinMilliSec() - first_half;
-
-  double second_half = getTimeinMilliSec();
-  // enqueue fetch to same queue as the store kernel due to data dependency
   status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue3, store2_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue3, store2_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch transpose kernel");
 
   status = clFinish(queue5);
@@ -350,29 +358,38 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
   checkError(status, "failed to finish");
   status = clFinish(queue3);
   checkError(status, "failed to finish");
-  /*
   status = clFinish(queue2);
   checkError(status, "failed to finish");
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-  */
 
-  second_half = getTimeinMilliSec() - second_half;
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
   
-  printf("First half: %lf Second half: %lf\n\n", first_half, second_half);
+  cl_ulong kernel_start = 0, kernel_end = 0;
 
+  clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06);
+
+  double svmBufferCopyout_timer = getTimeinMilliSec();
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
     (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map out data");
 
+  memcpy(out, h_outData, num_bytes);
+  /*
   for(size_t i = 0; i < num_pts; i++){
     out[i].x = h_outData[i].x;
     out[i].y = h_outData[i].y;
   }
+  */
 
   status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
   checkError(status, "Failed to unmap out data");
+
+  svmBufferCopyout_timer = getTimeinMilliSec() - svmBufferCopyout_timer;
+  printf("SVM Buffer Copy Out Time: %lfms\n\n", svmBufferCopyout_timer);
 
   if (h_inData)
     clSVMFree(context, h_inData);
@@ -417,8 +434,8 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, float2 *inp, float2 *out, bool inv) {
  * \param  interleaving : 1 if using burst interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_3d_ddr(int N, const float2 *inp, float2 *out, bool inv) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
   
@@ -468,15 +485,23 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv) {
   checkError(status, "Failed to allocate output device buffer\n");
 
   // Copy data from host to device
+  cl_event writeBuf_event;
   fft_time.pcie_write_t = getTimeinMilliSec();
 
-  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, NULL);
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, &writeBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish");
 
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
+
+  cl_ulong writeBuf_start = 0.0, writeBuf_end = 0.0;
+
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &writeBuf_start, NULL);
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &writeBuf_end, NULL);
+
+  fft_time.hw_pcie_write_t = (cl_double)(writeBuf_end - writeBuf_start) * (cl_double)(1e-06); 
 
   status=clSetKernelArg(fetch1_kernel, 0, sizeof(cl_mem), (void *)&d_inData);
   checkError(status, "Failed to set fetch1 kernel arg");
@@ -496,8 +521,11 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv) {
   status=clSetKernelArg(store2_kernel, 0, sizeof(cl_mem), (void *)&d_outData);
   checkError(status, "Failed to set store2 kernel arg");
 
+  // Kernel Execution
+  cl_event startExec_event, endExec_event;
+
   fft_time.exec_t = getTimeinMilliSec();
-  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
@@ -519,7 +547,7 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv) {
   status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue3, store2_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue3, store2_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch transpose kernel");
 
   status = clFinish(queue5);
@@ -535,15 +563,29 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv) {
 
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
+  cl_ulong kernel_start = 0, kernel_end = 0;
+
+  clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06); 
+
   // Copy results from device to host
+  cl_event readBuf_event;
   fft_time.pcie_read_t = getTimeinMilliSec();
-  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, NULL);
+  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, &readBuf_event);
   
   status = clFinish(queue1);
   checkError(status, "failed to finish reading DDR using PCIe");
 
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
+
+  cl_ulong readBuf_start = 0, readBuf_end = 0;
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &readBuf_start, NULL);
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &readBuf_end, NULL);
+
+  fft_time.hw_pcie_read_t = (cl_double)(readBuf_end - readBuf_start) * (cl_double)(1e-06); 
 
   queue_cleanup();
 
@@ -589,8 +631,8 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, float2 *inp, float2 *out, bool inv) {
  * \param how_many : number of batched computations
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool interleaving, int how_many) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, const float2 *inp, float2 *out, bool inv, bool interleaving, int how_many) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
   
@@ -730,6 +772,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
   checkError(status, "Failed to launch transpose kernel");
 
   // Check finish of transfer and computations
+  /*
   status = clFinish(queue6);
   checkError(status, "failed to finish");
   status = clFinish(queue5);
@@ -742,7 +785,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
   checkError(status, "failed to finish");
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-
+  */
   clWaitForEvents(1, &write_event[0]);
   clReleaseEvent(write_event[0]);
 
@@ -1063,8 +1106,8 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, float2 *inp, float2 *out, bool inv, bool
  * \param how_many : number of batched computations
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, float2 *inp, float2 *out, bool inv, int how_many) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool inv, int how_many) {
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
 

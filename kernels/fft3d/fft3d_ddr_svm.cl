@@ -15,7 +15,7 @@ channel float2 chaninTranStore1[POINTS] __attribute__((depth(POINTS)));
 channel float2 chaninTranStore2[POINTS] __attribute__((depth(POINTS)));
 
 // Kernel that fetches data from global memory 
-kernel void fetchBitrev1(__global __attribute__((buffer_location(SVM_HOST_BUFFER_LOCATION))) volatile float2 * restrict src) {
+kernel void fetchBitrev1(__global __attribute__((buffer_location("host"))) volatile float2 * restrict src) {
   unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bitrevA = false;
 
@@ -230,7 +230,7 @@ kernel void fft3db(int inverse) {
 }
 
 __attribute__((max_global_work_dim(0)))
-kernel void transposeStore1(__global __attribute__((buffer_location(DDR_BUFFER_LOCATION))) volatile float2 * restrict dest) {
+kernel void transposeStore1(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict dest) {
 
   const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bufA = false, is_bitrevA = false;
@@ -293,7 +293,7 @@ kernel void transposeStore1(__global __attribute__((buffer_location(DDR_BUFFER_L
   }
 }
 __attribute__((max_global_work_dim(0)))
-kernel void fetchBitrev2(__global __attribute__((buffer_location(DDR_BUFFER_LOCATION))) volatile float2 * restrict src) {
+kernel void fetchBitrev2(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict src) {
   unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
 
   bool is_bufA = false, is_bitrevA = false;
@@ -417,7 +417,7 @@ kernel void fft3dc(int inverse) {
 }
 
 __attribute__((max_global_work_dim(0)))
-kernel void transposeStore2(__global __attribute__((buffer_location(SVM_HOST_BUFFER_LOCATION))) volatile float2 * restrict dest) {
+kernel void transposeStore2(__global __attribute__((buffer_location("host"))) float2 * restrict dest) {
 
   const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bufA = false, is_bitrevA = false;

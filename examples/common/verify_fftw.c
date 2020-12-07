@@ -70,7 +70,7 @@ bool verify_fftwf(float2 *fpgaout, float2 *verify, int N, int dim, bool inverse,
     mag_sum += magnitude;
     noise_sum += noise;
 #ifndef NDEBUG
-    printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
+    //printf("%zu : fpga - (%e %e) cpu - (%e %e)\n", i, fpgaout[i].x, fpgaout[i].y, fftw_data[i][0], fftw_data[i][1]);
 #endif            
   }
 

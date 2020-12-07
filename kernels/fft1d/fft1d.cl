@@ -138,7 +138,8 @@ uint permute_gid (uint gid) {
 
 // group dimension (N/(8*CONT_FACTOR), num_iterations)
 __attribute__((reqd_work_group_size(CONT_FACTOR * POINTS, 1, 1)))
-kernel void fetch(global float2 * restrict src) {
+kernel 
+void fetch(__global __attribute__((buffer_location(SVM_HOST_BUFFER_LOCATION))) volatile float2 * restrict src) {
 
   // Each thread will fetch POINTS points. Need POINTS times to pass to FFT.
   const int BUF_SIZE = 1 << (LOG_CONT_FACTOR + LOGPOINTS + LOGPOINTS);
@@ -179,8 +180,8 @@ kernel void fetch(global float2 * restrict src) {
  * 'inverse' toggles between the direct and the inverse transform
  */
 
-kernel void fft1d(global float2 * restrict dest,
-                  int count, int inverse) {
+kernel 
+void fft1d(__global __attribute__((buffer_location(SVM_HOST_BUFFER_LOCATION))) volatile float2 * restrict dest, int count, int inverse) {
 
   /* The FFT engine requires a sliding window array for data reordering; data 
    * stored in this array is carried across loop iterations and shifted by one 

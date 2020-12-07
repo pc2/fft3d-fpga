@@ -87,7 +87,7 @@ void print_config(int N, int dim, int iter, bool inv, bool sp, int batch, bool u
  * \param  inv: true if backward transform
  * \param  single precision floating point transformation
  */
-void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, int N, int dim, int iter, int batch, bool inv, bool sp){
+void display_measures(double total_api_time, double pcie_rd, double pcie_wr, double exec_t, double hw_pcie_rd, double hw_pcie_wr, double hw_exec, int N, int dim, int iter, int batch, bool inv, bool sp){
 
   double avg_api_time = 0.0;
 
@@ -99,7 +99,11 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   double pcie_write = pcie_wr / iter;
   double exec = exec_t / iter;
 
-  double gpoints_per_sec = (batch * pow(N, dim))  / (exec * 1e-3 * 1024 * 1024 * 1024);
+  double hw_pcie_read = hw_pcie_rd / iter;
+  double hw_pcie_write = hw_pcie_wr / iter;
+  double hw_execution = hw_exec / iter;
+
+  double gpoints_per_sec = (batch * pow(N, dim))  / (hw_execution * 1e-3 * 1024 * 1024 * 1024);
   double gBytes_per_sec = 0.0;
 
   if(sp){
@@ -114,19 +118,23 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   printf("\n\n------------------------------------------\n");
   printf("Measurements \n");
   printf("--------------------------------------------\n");
-  printf("Points             = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
-  printf("Precision          = %s\n",  sp ? "Single": "Double");
-  printf("Direction          = %s\n", inv ? "Backward":"Forward");
-  printf("Iterations         = %d\n", iter);
-  printf("Batch              = %d\n", batch);
+  printf("Points               = %d%s \n", N, dim == 1 ? "" : dim == 2 ? "^2" : "^3");
+  printf("Precision            = %s\n",  sp ? "Single": "Double");
+  printf("Direction            = %s\n", inv ? "Backward":"Forward");
+  printf("Iterations           = %d\n", iter);
+  printf("Batch                = %d\n", batch);
 
   printf("%s", iter>1 ? "Average Measurements of iterations\n":"");
-  printf("PCIe Write         = %.2lfms\n", pcie_write);
-  printf("Kernel Execution   = %.2lfms\n", exec);
-  printf("PCIe Read          = %.2lfms\n", pcie_read);
-  printf("Total              = %.2lfms\n", pcie_read + exec + pcie_write);
-  printf("Throughput         = %.2lfGFLOPS/s | %.2lf GB/s\n", gflops, gBytes_per_sec);
-  printf("API runtime        = %.2lfms\n", avg_api_time);
+  printf("PCIe Write           = %.4lfms\n", pcie_write);
+  printf("Kernel Execution     = %.4lfms\n", exec);
+  printf("PCIe Read            = %.4lfms\n", pcie_read);
+  printf("Total                = %.4lfms\n", pcie_read + exec + pcie_write);
+  printf("HW PCIe Write        = %.4lfms\n", hw_pcie_write);
+  printf("HW Kernel Execution  = %.4lfms\n", hw_execution);
+  printf("HW PCIe Read         = %.4lfms\n", hw_pcie_read);
+  printf("Hw Total             = %.4lfms\n", hw_pcie_write + hw_execution + hw_pcie_read);
+  printf("Throughput           = %.4lfGFLOPS/s | %.4lf GB/s\n", gflops, gBytes_per_sec);
+  printf("API runtime          = %.4lfms\n", avg_api_time);
 }
 
 /**

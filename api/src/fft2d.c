@@ -24,8 +24,8 @@
  * \param  iter : int toggle to activate backward FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_2d_ddr(int N, const float2 *inp, float2 *out, bool inv){
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_kernel fetch_kernel = NULL, fft_kernel = NULL, transpose_kernel = NULL;
   cl_int status = 0;
   int mangle_int = 0;
@@ -51,15 +51,23 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
   checkError(status, "Failed to allocate output device buffer\n");
 
   // Copy data from host to device
+  cl_event writeBuf_event;
   fft_time.pcie_write_t = getTimeinMilliSec();
 
-  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * N, inp, 0, NULL, NULL);
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * N, inp, 0, NULL, &writeBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish writing buffer using PCIe");
 
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
+
+  cl_ulong writeBuf_start = 0.0, writeBuf_end = 0.0;
+
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &writeBuf_start, NULL);
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &writeBuf_end, NULL);
+
+  fft_time.hw_pcie_write_t = (cl_double)(writeBuf_end - writeBuf_start) * (cl_double)(1e-06); 
 
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
@@ -72,6 +80,7 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
   transpose_kernel = clCreateKernel(program, "transpose", &status);
   checkError(status, "Failed to create kernel");
 
+  cl_event startExec_event[2], endExec_event[2];
   // Record execution time
   fft_time.exec_t = getTimeinMilliSec();
 
@@ -85,7 +94,7 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
     checkError(status, "Failed to set kernel arg 1");
     size_t lws_fetch[] = {N};
     size_t gws_fetch[] = {N * N / 8};
-    status = clEnqueueNDRangeKernel(queue1, fetch_kernel, 1, 0, gws_fetch, lws_fetch, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(queue1, fetch_kernel, 1, 0, gws_fetch, lws_fetch, 0, NULL, (i % 2) == 0 ? &startExec_event[0] : &startExec_event[1]);
     checkError(status, "Failed to launch kernel");
 
     // Launch the fft kernel - we launch a single work item hence enqueue a task
@@ -103,7 +112,7 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
 
     size_t lws_transpose[] = {N};
     size_t gws_transpose[] = {N * N / 8};
-    status = clEnqueueNDRangeKernel(queue3, transpose_kernel, 1, 0, gws_transpose, lws_transpose, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(queue3, transpose_kernel, 1, 0, gws_transpose, lws_transpose, 0, NULL, (i % 2) == 0 ? &endExec_event[0] : &endExec_event[1]);
     checkError(status, "Failed to launch kernel");
 
     // Wait for all command queues to complete pending events
@@ -117,15 +126,34 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
 
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
+  cl_ulong kernel_start = 0, kernel_end = 0;
+
+  clGetEventProfilingInfo(startExec_event[0], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event[0], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06); 
+
+  clGetEventProfilingInfo(startExec_event[1], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event[1], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t += (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06); 
+
   // Copy results from device to host
+  cl_event readBuf_event;
   fft_time.pcie_read_t = getTimeinMilliSec();
-  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N, out, 0, NULL, NULL);
+  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * N, out, 0, NULL, &readBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish reading buffer using PCIe");
 
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
+
+  cl_ulong readBuf_start = 0, readBuf_end = 0;
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &readBuf_start, NULL);
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &readBuf_end, NULL);
+
+  fft_time.hw_pcie_read_t = (cl_double)(readBuf_end - readBuf_start) * (cl_double)(1e-06); 
 
   // Cleanup
   if (d_inData)
@@ -155,8 +183,8 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, float2 *inp, float2 *out, bool inv){
  * \param  interleaving : enable interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, bool interleaving, int how_many){
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_2d_bram(int N, const float2 *inp, float2 *out, bool inv, bool interleaving, int how_many){
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_kernel ffta_kernel = NULL, fftb_kernel = NULL;
   cl_kernel fetch_kernel = NULL, store_kernel = NULL;
   cl_kernel transpose_kernel = NULL;
@@ -194,15 +222,23 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   checkError(status, "Failed to allocate output device buffer\n");
 
  // Copy data from host to device
+  cl_event writeBuf_event;
   fft_time.pcie_write_t = getTimeinMilliSec();
 
-  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, NULL);
+  status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, &writeBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish");
 
   fft_time.pcie_write_t = getTimeinMilliSec() - fft_time.pcie_write_t;
   checkError(status, "Failed to copy data to device");
+
+  cl_ulong writeBuf_start = 0.0, writeBuf_end = 0.0;
+
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &writeBuf_start, NULL);
+  clGetEventProfilingInfo(writeBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &writeBuf_end, NULL);
+
+  fft_time.hw_pcie_write_t = (cl_double)(writeBuf_end - writeBuf_start) * (cl_double)(1e-06);
 
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
@@ -249,8 +285,11 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   status = clSetKernelArg(store_kernel, 1, sizeof(cl_int), (void *)&how_many);
   checkError(status, "Failed to set store kernel arg");
 
+  // Kernel Execution
+  cl_event startExec_event, endExec_event;
+
   fft_time.exec_t = getTimeinMilliSec();
-  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
@@ -262,7 +301,7 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch second fft kernel");
 
-  status = clEnqueueTask(queue5, store_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue5, store_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch store kernel");
 
   // Wait for all command queues to complete pending events
@@ -278,15 +317,30 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
   checkError(status, "failed to finish queue5");
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
+  cl_ulong kernel_start = 0, kernel_end = 0;
+
+  clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06); 
+
   // Copy results from device to host
+  cl_event readBuf_event;
+
   fft_time.pcie_read_t = getTimeinMilliSec();
-  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, NULL);
+  status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * num_pts, out, 0, NULL, &readBuf_event);
 
   status = clFinish(queue1);
   checkError(status, "failed to finish reading buffer using PCIe");
 
   fft_time.pcie_read_t = getTimeinMilliSec() - fft_time.pcie_read_t;
   checkError(status, "Failed to copy data from device");
+
+  cl_ulong readBuf_start = 0, readBuf_end = 0;
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &readBuf_start, NULL);
+  clGetEventProfilingInfo(readBuf_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &readBuf_end, NULL);
+
+  fft_time.hw_pcie_read_t = (cl_double)(readBuf_end - readBuf_start) * (cl_double)(1e-06);
 
   queue_cleanup();
 
@@ -321,8 +375,8 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, float2 *inp, float2 *out, bool inv, bool inte
  * \param  inv  : int toggle to activate backward FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_bram_svm(int N, float2 *inp, float2 *out, bool inv, int how_many){
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0};
+fpga_t fftfpgaf_c2c_2d_bram_svm(int N, const float2 *inp, float2 *out, bool inv, int how_many){
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = how_many * N * N;
 
@@ -417,8 +471,10 @@ fpga_t fftfpgaf_c2c_2d_bram_svm(int N, float2 *inp, float2 *out, bool inv, int h
   status = clSetKernelArg(store_kernel, 1, sizeof(cl_int), (void *)&how_many);
   checkError(status, "Failed to set store kernel arg");
 
+  cl_event startExec_event, endExec_event;
+
   fft_time.exec_t = getTimeinMilliSec();
-  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
@@ -430,7 +486,7 @@ fpga_t fftfpgaf_c2c_2d_bram_svm(int N, float2 *inp, float2 *out, bool inv, int h
   status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch second fft kernel");
 
-  status = clEnqueueTask(queue5, store_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue5, store_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch store kernel");
 
   // Wait for all command queues to complete pending events
@@ -445,6 +501,12 @@ fpga_t fftfpgaf_c2c_2d_bram_svm(int N, float2 *inp, float2 *out, bool inv, int h
   status = clFinish(queue4);
   checkError(status, "failed to finish queue4");
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
+
+  cl_ulong kernel_start = 0, kernel_end = 0;
+  clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06);
 
  status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
     (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);

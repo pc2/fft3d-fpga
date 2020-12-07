@@ -27,10 +27,10 @@ int main(int argc, const char **argv) {
   char *path = "fft3d_emulate.aocx";
   const char *platform;
 
-  fpga_t timing = {0.0, 0.0, 0.0, 0};
+  fpga_t timing = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
+  double avg_hw_rd = 0.0, avg_hw_wr = 0.0, avg_hw_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
-  double data_timer = 0.0;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -75,7 +75,7 @@ int main(int argc, const char **argv) {
   for(size_t i = 0; i < iter; i++){
 
     // create and destroy data every iteration
-    data_timer = getTimeinMilliseconds();
+    double data_timer = getTimeinMilliseconds();
     status = fftf_create_data(inp, N * N * N);
     data_timer = getTimeinMilliseconds() - data_timer;
     if(!status){
@@ -109,11 +109,19 @@ int main(int argc, const char **argv) {
     avg_rd += timing.pcie_read_t;
     avg_wr += timing.pcie_write_t;
     avg_exec += timing.exec_t;
+    avg_hw_rd += timing.hw_pcie_read_t;
+    avg_hw_wr += timing.hw_pcie_write_t;
+    avg_hw_exec += timing.hw_exec_t;
 
     printf("Iter: %lu\n", i);
     printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
     printf("\tKernel: %lfms\n", timing.exec_t);
     printf("\tPCIe Wr: %lfms\n\n", timing.pcie_write_t);
+            
+    printf("Hw Counters: \n");
+    printf("\tHW PCIe Rd: %lfms\n", timing.hw_pcie_read_t);
+    printf("\tHW Kernel: %lfms\n", timing.hw_exec_t);
+    printf("\tHW PCIe Wr: %lfms\n\n", timing.hw_pcie_write_t);
             
   }  // iter
   // destroy FFT input and output
@@ -124,7 +132,7 @@ int main(int argc, const char **argv) {
   fpga_final();
 
   // display performance measures
-  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, N, dim, iter, batch, inv, sp);
+  display_measures(total_api_time, avg_rd, avg_wr, avg_exec, avg_hw_rd, avg_hw_wr, avg_hw_exec, N, dim, iter, batch, inv, sp);
 
   return EXIT_SUCCESS;
 }
