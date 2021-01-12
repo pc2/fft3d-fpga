@@ -44,8 +44,15 @@ if(NOT DEFINED FPGA_BOARD_NAME)
   endif()
 endif()
 
+if(${FPGA_BOARD_NAME} STREQUAL "pac_s10_usm")
+  set(BOARD_PACKAGE "-board-package=/cm/shared/opt/intel_oneapi/beta-10/intelfpgadpcpp/2021.1-beta10/board/intel_s10sx_pac_usm/")
+  message("-- Board Package: ${BOARD_PACKAGE}")
+else()
+  set(BOARD_PACKAGE "")
+endif()
+
 ## Flags for different target options
-set(AOC_FLAGS "-g -v -fp-relaxed -cl-single-precision-constant -board-package=/cm/shared/opt/intel_oneapi/beta-10/intelfpgadpcpp/2021.1-beta10/board/intel_s10sx_pac_usm/ -no-interleaving=default" CACHE STRING "AOC compiler flags")
+set(AOC_FLAGS "-g -v -no-interleaving=default ${BOARD_PACKAGE}" CACHE STRING "AOC compiler flags")
 separate_arguments(AOC_FLAGS)
 set(EMU_FLAGS "-legacy-emulator -march=emulator" CACHE STRING "AOC emulation flags")
 separate_arguments(EMU_FLAGS)

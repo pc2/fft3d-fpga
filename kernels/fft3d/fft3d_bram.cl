@@ -6,14 +6,14 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-channel float2 chaninfft3da[POINTS] __attribute__((depth(POINTS)));
-channel float2 chaninfft3db[POINTS] __attribute__((depth(POINTS)));
-channel float2 chaninfft3dc[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninfft3da[POINTS];
+channel float2 chaninfft3db[POINTS];
+channel float2 chaninfft3dc[POINTS];
 
-channel float2 chaninTranspose[POINTS] __attribute__((depth(POINTS)));
-channel float2 chaninTranspose3D[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninTranspose[POINTS];
+channel float2 chaninTranspose3D[POINTS];
 
-channel float2 chaninTranStore[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninTranStore[POINTS];
 
 // Kernel that fetches data from global memory 
 kernel void fetch(global volatile float2 * restrict src) {
