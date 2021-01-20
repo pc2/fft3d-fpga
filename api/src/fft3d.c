@@ -15,6 +15,9 @@
 #include "opencl_utils.h"
 #include "misc.h"
 
+#define WR_GLOBALMEM 0
+#define RD_GLOBALMEM 1
+#define BATCH 2
 
 /**
  * \brief  compute an out-of-place single precision complex 3D-FFT using the BRAM of the FPGA
@@ -423,7 +426,10 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   int num_pts = N * N * N;
-  
+
+  // 0 - WR_GLOBALMEM, 1 - RD_GLOBALMEM, 2 - BATCH
+  int mode = WR_GLOBALMEM;
+
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || !(svm_enabled)){
     return fft_time;
@@ -433,23 +439,21 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   int inverse_int = (int)inv;
 
   // Setup kernels
-  cl_kernel fetch1_kernel = clCreateKernel(program, "fetchBitrev1", &status);
-  checkError(status, "Failed to create fetch1 kernel");
+  cl_kernel fetch_kernel = clCreateKernel(program, "fetch", &status);
+  checkError(status, "Failed to create fetch kernel");
   cl_kernel ffta_kernel = clCreateKernel(program, "fft3da", &status);
   checkError(status, "Failed to create fft3da kernel");
   cl_kernel transpose_kernel = clCreateKernel(program, "transpose", &status);
   checkError(status, "Failed to create transpose kernel");
   cl_kernel fftb_kernel = clCreateKernel(program, "fft3db", &status);
   checkError(status, "Failed to create fft3db kernel");
-  cl_kernel store1_kernel = clCreateKernel(program, "transposeStore1", &status);
-  checkError(status, "Failed to create store1 kernel");
+  cl_kernel transpose3D_kernel = clCreateKernel(program, "transpose3D", &status);
+  checkError(status, "Failed to create transpose3D kernel");
 
-  cl_kernel fetch2_kernel = clCreateKernel(program, "fetchBitrev2", &status);
-  checkError(status, "Failed to create fetch2 kernel");
   cl_kernel fftc_kernel = clCreateKernel(program, "fft3dc", &status);
   checkError(status, "Failed to create fft3dc kernel");
-  cl_kernel store2_kernel = clCreateKernel(program, "transposeStore2", &status);
-  checkError(status, "Failed to create store2 kernel");
+  cl_kernel store_kernel = clCreateKernel(program, "store", &status);
+  checkError(status, "Failed to create store kernel");
 
   // Setup Queues to the kernels
   queue_setup();
@@ -502,9 +506,12 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   svmBufferCopyIn_timer = getTimeinMilliSec() - svmBufferCopyIn_timer;
   printf("\nSVM Buffer Copy In Time: %lfms\n", svmBufferCopyIn_timer);
 
+  /*
+  * kernel arguments
+  */
   // write to fetch kernel using SVM based PCIe
-  status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData);
-  checkError(status, "Failed to set fetch1 kernel arg");
+  status = clSetKernelArgSVMPointer(fetch_kernel, 0, (void *)h_inData);
+  checkError(status, "Failed to set fetch kernel arg");
 
   status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
   checkError(status, "Failed to set ffta kernel arg");
@@ -512,32 +519,43 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   checkError(status, "Failed to set fftb kernel arg");
 
   // kernel stores to DDR memory
-  status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void*)&d_inOutData);
-  checkError(status, "Failed to set store1 kernel arg");
+  status=clSetKernelArg(transpose3D_kernel, 0, sizeof(cl_mem), (void*)&d_inOutData);
+  checkError(status, "Failed to set transpose3D kernel arg");
 
   // kernel fetches from DDR memory
-  status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void*)&d_inOutData);
-  checkError(status, "Failed to set fetch2 kernel arg");
+  status=clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), (void*)&d_inOutData);
+  checkError(status, "Failed to set transpose3D kernel arg");
+
+  mode = WR_GLOBALMEM; 
+
+  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+  checkError(status, "Failed to set transpose3D kernel arg 2");
+
   status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
   checkError(status, "Failed to set fftc kernel arg");
 
   // kernel stores using SVM based PCIe to host
-  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void*)h_outData);
+  status = clSetKernelArgSVMPointer(store_kernel, 0, (void*)h_outData);
   checkError(status, "Failed to set store2 kernel arg");
 
   cl_event startExec_event, endExec_event;
 
   fft_time.exec_t = getTimeinMilliSec();
-  status = clEnqueueTask(queue7, store2_kernel, 0, NULL, &endExec_event);
+  status = clEnqueueTask(queue7, store_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch transpose kernel");
 
   status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch second transpose kernel");
+  status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
 
-  status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
+  mode = RD_GLOBALMEM;
+
+  status = clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+  checkError(status, "Failed to set transpose3D kernel arg 2");
+
+  status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
@@ -549,7 +567,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL,  &startExec_event);
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL,  &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
 
   status = clFinish(queue7);
@@ -605,10 +623,8 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   if (d_inOutData)
     clReleaseMemObject(d_inOutData);
 
-  if(fetch1_kernel) 
-    clReleaseKernel(fetch1_kernel);  
-  if(fetch2_kernel) 
-    clReleaseKernel(fetch2_kernel);  
+  if(fetch_kernel) 
+    clReleaseKernel(fetch_kernel);  
 
   if(ffta_kernel) 
     clReleaseKernel(ffta_kernel);  
@@ -620,10 +636,11 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   if(transpose_kernel) 
     clReleaseKernel(transpose_kernel);  
 
-  if(store1_kernel) 
-    clReleaseKernel(store1_kernel);  
-  if(store2_kernel) 
-    clReleaseKernel(store2_kernel);  
+  if(transpose3D_kernel) 
+    clReleaseKernel(transpose3D_kernel);  
+
+  if(store_kernel) 
+    clReleaseKernel(store_kernel);  
 
   fft_time.valid = 1;
   return fft_time;
@@ -1120,6 +1137,9 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   cl_int status = 0;
   int num_pts = N * N * N;
 
+  // 0 - WR_GLOBALMEM, 1 - RD_GLOBALMEM, 2 - BATCH
+  int mode = WR_GLOBALMEM;
+
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (how_many <= 0)){
     return fft_time;
@@ -1129,46 +1149,39 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
     return fft_time;
   }
 
-#ifdef VERBOSE
-  printf("Launching%s 3d FFT transform in DDR \n", inv ? " inverse":"");
-#endif
-
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
 
   // Setup kernels
-  cl_kernel fetch1_kernel = clCreateKernel(program, "fetchBitrev1", &status);
-  checkError(status, "Failed to create fetch1 kernel");
+  cl_kernel fetch_kernel = clCreateKernel(program, "fetch", &status);
+  checkError(status, "Failed to create fetch kernel");
   cl_kernel ffta_kernel = clCreateKernel(program, "fft3da", &status);
   checkError(status, "Failed to create fft3da kernel");
   cl_kernel transpose_kernel = clCreateKernel(program, "transpose", &status);
   checkError(status, "Failed to create transpose kernel");
   cl_kernel fftb_kernel = clCreateKernel(program, "fft3db", &status);
   checkError(status, "Failed to create fft3db kernel");
-  cl_kernel store1_kernel = clCreateKernel(program, "transposeStore1", &status);
-  checkError(status, "Failed to create store1 kernel");
+  cl_kernel transpose3D_kernel = clCreateKernel(program, "transpose3D", &status);
+  checkError(status, "Failed to create transpose3D kernel");
 
-  cl_kernel fetch2_kernel = clCreateKernel(program, "fetchBitrev2", &status);
-  checkError(status, "Failed to create fetch2 kernel");
   cl_kernel fftc_kernel = clCreateKernel(program, "fft3dc", &status);
   checkError(status, "Failed to create fft3dc kernel");
-  cl_kernel store2_kernel = clCreateKernel(program, "transposeStore2", &status);
-  checkError(status, "Failed to create store2 kernel");
+  cl_kernel store_kernel = clCreateKernel(program, "store", &status);
+  checkError(status, "Failed to create store kernel");
 
   // Setup Queues to the kernels
   queue_setup();
 
   // Device memory buffers: double buffers
-  cl_mem d_outData_0;
-  d_outData_0 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  cl_mem d_inOutData_0;
+  d_inOutData_0 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
-  cl_mem d_outData_1;
-  d_outData_1 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  cl_mem d_inOutData_1;
+  d_inOutData_1 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
   // allocate and initialize SVM buffers
-
   float2 *h_inData[how_many], *h_outData[how_many];
   for(size_t i = 0; i < how_many; i++){
     h_inData[i] = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
@@ -1204,89 +1217,68 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   * kernel arguments
   */
   // write to fetch kernel using SVM based PCIe
-  status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData[0]);
+  status = clSetKernelArgSVMPointer(fetch_kernel, 0, (void *)h_inData[0]);
   checkError(status, "Failed to set fetch1 kernel arg");
 
   status=clSetKernelArg(ffta_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
   checkError(status, "Failed to set ffta kernel arg");
+  // transpose() has no arguments
   status=clSetKernelArg(fftb_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
   checkError(status, "Failed to set fftb kernel arg");
 
   // kernel stores to DDR memory
-  status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
-  checkError(status, "Failed to set store1 kernel arg");
+  status=clSetKernelArg(transpose3D_kernel, 0, sizeof(cl_mem), (void*)&d_inOutData_1);
+  checkError(status, "Failed to set transpose3D kernel arg");
+
+  status=clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), (void*)&d_inOutData_0);
+  checkError(status, "Failed to set transpose3D kernel arg");
+
+  mode = WR_GLOBALMEM;
+  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+  checkError(status, "Failed to set transpose3D kernel arg");
 
   /*
   *  First batch write phase
   */
   fft_time.exec_t = getTimeinMilliSec();
-  status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fetch kernel");
-
-  status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fft kernel");
-
-  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose kernel");
+  status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch second transpose kernel");
 
   status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch second fft kernel");
 
-  status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch second transpose kernel");
+  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch transpose kernel");
+
+  status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fft kernel");
+
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
 
   for(size_t i = 1; i < how_many; i++){
 
-    /*
-    *  Read phase of previous iteration
-    */
-    // kernel fetches from DDR memory
-    // kernel stores using SVM based PCIe to host
-    if( (i % 2) == 1){
-      // if odd number of batches
-      status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
-      checkError(status, "Failed to set fetch2 kernel arg");
+    status = clSetKernelArgSVMPointer(fetch_kernel, 0, (void *)h_inData[i]);
+    checkError(status, "Failed to set fetch kernel arg");
 
-      // Start fetch2 phase with same queue as store1
-      status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
-      checkError(status, "Failed to launch fetch kernel");
-    }
-    else{
-      status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_1);
-      checkError(status, "Failed to set fetch2 kernel arg");
+    status = clSetKernelArg(transpose3D_kernel, 0, sizeof(cl_mem), ((i % 2) == 1) ? (void*)&d_inOutData_0 : (void*)&d_inOutData_1);
+    checkError(status, "Failed to set transpose3D kernel arg 0");
 
-      // Start fetch2 phase with same queue as store1
-      status = clEnqueueTask(queue8, fetch2_kernel, 0, NULL, NULL);
-      checkError(status, "Failed to launch fetch kernel");
-    }
-    status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-    checkError(status, "Failed to set fftc kernel arg");
-    status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData[i-1]);
-    checkError(status, "Failed to set store2 kernel arg");
+    status = clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), ((i % 2) == 1) ? (void*)&d_inOutData_1 : (void*)&d_inOutData_0);
+    checkError(status, "Failed to set transpose3D kernel arg 1");
 
-    status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fft kernel");
+    mode = BATCH;
+    status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+    checkError(status, "Failed to set transpose3D kernel arg 2");
 
-    status = clEnqueueTask(queue7, store2_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch transpose kernel");
+    status = clSetKernelArgSVMPointer(store_kernel, 0, (void *)h_outData[i-1]);
+    checkError(status, "Failed to set store kernel arg");
 
-    /*
-     *  write phase of current iteration
-     */
-    // change write phase host and ddr ptrs
-    status = clSetKernelArgSVMPointer(fetch1_kernel, 0, (void *)h_inData[i]);
-    checkError(status, "Failed to set fetch1 kernel arg");
-    if(i % 2 == 1){
-      status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData_1);
-      checkError(status, "Failed to set store1 kernel arg");
-    }
-    else{
-      status=clSetKernelArg(store1_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
-      checkError(status, "Failed to set store1 kernel arg");
-    }
+    // Enqueue Tasks
+    status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose3D kernel");
 
-    // Start write phase of current iteration
-    status = clEnqueueTask(queue1, fetch1_kernel, 0, NULL, NULL);
+    status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch fetch kernel");
 
     status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
@@ -1298,56 +1290,55 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
     status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch second fft kernel");
 
-    if(i % 2 == 1){
-      status = clEnqueueTask(queue8, store1_kernel, 0, NULL, NULL);
-      checkError(status, "Failed to launch second transpose kernel");
-    }
-    else{
-      status = clEnqueueTask(queue5, store1_kernel, 0, NULL, NULL);
-      checkError(status, "Failed to launch second transpose kernel");
-    }
+    status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue7, store_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch store kernel");
+
+    status = clFinish(queue1);
+    checkError(status, "Failed to finish queue1");
+    status = clFinish(queue2);
+    checkError(status, "Failed to finish queue2");
+    status = clFinish(queue3);
+    checkError(status, "Failed to finish queue3");
+    status = clFinish(queue4);
+    checkError(status, "Failed to finish queue4");
+    status = clFinish(queue5);
+    checkError(status, "Failed to finish queue5");
+    status = clFinish(queue6);
+    checkError(status, "Failed to finish queue6");
+    status = clFinish(queue7);
+    checkError(status, "Failed to finish queue7");
   }
   
-  if(how_many % 2 == 1){
-    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_0);
-    checkError(status, "Failed to set fetch2 kernel arg");
+  status = clSetKernelArg(transpose3D_kernel, 0, sizeof(cl_mem), ((how_many % 2) == 0) ? (void*)&d_inOutData_0 : (void*)&d_inOutData_1);
+  checkError(status, "Failed to set transpose3D kernel arg 0");
 
-    status = clEnqueueTask(queue5, fetch2_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fetch kernel");
-  }
-  else{
-    status=clSetKernelArg(fetch2_kernel, 0, sizeof(cl_mem), (void *)&d_outData_1);
-    checkError(status, "Failed to set fetch2 kernel arg");
-    status = clEnqueueTask(queue8, fetch2_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fetch kernel");
-  }
-  status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
-  checkError(status, "Failed to set fftc kernel arg");
-  status = clSetKernelArgSVMPointer(store2_kernel, 0, (void *)h_outData[how_many-1]);
-  checkError(status, "Failed to set store2 kernel arg");
+  status = clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), ((how_many % 2) == 0) ? (void*)&d_inOutData_1 : (void*)&d_inOutData_0);
+  checkError(status, "Failed to set transpose3D kernel arg 1");
+
+  mode = RD_GLOBALMEM;
+  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+  checkError(status, "Failed to set transpose3D kernel arg 2");
+
+  status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch transpose3D kernel");
 
   status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue7, store2_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose kernel");
-
-  status = clFinish(queue1);
-  checkError(status, "Failed to finish queue1");
-  status = clFinish(queue2);
-  checkError(status, "Failed to finish queue2");
-  status = clFinish(queue3);
-  checkError(status, "Failed to finish queue1");
-  status = clFinish(queue4);
-  checkError(status, "Failed to finish queue2");
+  status = clSetKernelArgSVMPointer(store_kernel, 0, (void *)h_outData[how_many]);
+  checkError(status, "Failed to set store kernel arg");
+  status = clEnqueueTask(queue7, store_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch store kernel");
+  
   status = clFinish(queue5);
-  checkError(status, "Failed to finish queue1");
+  checkError(status, "Failed to finish queue5");
   status = clFinish(queue6);
-  checkError(status, "Failed to finish queue2");
+  checkError(status, "Failed to finish queue6");
   status = clFinish(queue7);
-  checkError(status, "Failed to finish queue1");
-  status = clFinish(queue8);
-  checkError(status, "Failed to finish queue2");
+  checkError(status, "Failed to finish queue7");
 
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
@@ -1374,15 +1365,13 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
 
   queue_cleanup();
 
-  if (d_outData_0) 
-    clReleaseMemObject(d_outData_0);
-  if (d_outData_1) 
-    clReleaseMemObject(d_outData_1);
+  if (d_inOutData_0) 
+    clReleaseMemObject(d_inOutData_0);
+  if (d_inOutData_1) 
+    clReleaseMemObject(d_inOutData_1);
 
-  if(fetch1_kernel) 
-    clReleaseKernel(fetch1_kernel);  
-  if(fetch2_kernel) 
-    clReleaseKernel(fetch2_kernel);  
+  if(fetch_kernel) 
+    clReleaseKernel(fetch_kernel);  
 
   if(ffta_kernel) 
     clReleaseKernel(ffta_kernel);  
@@ -1394,10 +1383,11 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   if(transpose_kernel) 
     clReleaseKernel(transpose_kernel);  
 
-  if(store1_kernel) 
-    clReleaseKernel(store1_kernel);  
-  if(store2_kernel) 
-    clReleaseKernel(store2_kernel);  
+  if(transpose3D_kernel) 
+    clReleaseKernel(transpose3D_kernel);  
+
+  if(store_kernel) 
+    clReleaseKernel(store_kernel);  
 
   fft_time.valid = 1;
   return fft_time;
