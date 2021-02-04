@@ -31,17 +31,19 @@ int main(int argc, const char **argv) {
   double avg_hw_rd = 0.0, avg_hw_wr = 0.0, avg_hw_exec = 0.0;
   double avg_svm_copyin = 0.0, avg_svm_copyout = 0.0;
 
+  bool noverify = false;
+
   struct argparse_option options[] = {
     OPT_HELP(),
     OPT_GROUP("Basic Options"),
     OPT_INTEGER('n',"n", &N, "FFT Points"),
-    OPT_BOOLEAN('s',"sp", &sp, "Single Precision"),
     OPT_INTEGER('i',"iter", &iter, "Iterations"),
     OPT_BOOLEAN('b',"back", &inv, "Backward FFT"),
     OPT_INTEGER('c',"batch", &batch, "Batch"),
     OPT_BOOLEAN('t',"interleaving", &interleaving, "Use burst interleaving in case of BRAM designs"),
     OPT_STRING('p', "path", &path, "Path to bitstream"),
     OPT_BOOLEAN('e', "emu", &use_emulator, "Use emulator"),
+    OPT_BOOLEAN('y', "noverify", &noverify, "Don't verify results"),
     OPT_END(),
   };
 
@@ -93,11 +95,14 @@ int main(int argc, const char **argv) {
     total_api_time += getTimeinMilliseconds() - temp_timer;
 
 #ifdef USE_FFTW
-    if(!verify_fftwf(out, inp, N, 3, inv, batch)){
-      fprintf(stderr, "3d FFT Verification Failed \n");
-      free(inp);
-      free(out);
-      return EXIT_FAILURE;
+    if(noverify == false){
+      printf("Verifying results for iteration %lu\n", i);
+      if(!verify_fftwf(out, inp, N, 3, inv, batch)){
+        fprintf(stderr, "3d FFT Verification Failed \n");
+        free(inp);
+        free(out);
+        return EXIT_FAILURE;
+      }
     }
 #endif
     if(!timing.valid){
