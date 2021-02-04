@@ -31,6 +31,7 @@ int main(int argc, const char **argv) {
   double avg_rd = 0.0, avg_wr = 0.0, avg_exec = 0.0;
   double avg_hw_rd = 0.0, avg_hw_wr = 0.0, avg_hw_exec = 0.0;
   double temp_timer = 0.0, total_api_time = 0.0;
+  double avg_svm_copyin = 0.0, avg_svm_copyout = 0.0;
 
   struct argparse_option options[] = {
     OPT_HELP(),
@@ -99,7 +100,7 @@ int main(int argc, const char **argv) {
       return EXIT_FAILURE;
     }
 #endif
-    if(timing.valid == 0){
+    if(!timing.valid){
       fprintf(stderr, "Invalid execution, timing found to be 0");
       free(inp);
       free(out);
@@ -112,6 +113,8 @@ int main(int argc, const char **argv) {
     avg_hw_rd += timing.hw_pcie_read_t;
     avg_hw_wr += timing.hw_pcie_write_t;
     avg_hw_exec += timing.hw_exec_t;
+    avg_svm_copyin += timing.svm_copyin_t;
+    avg_svm_copyout += timing.svm_copyout_t;
 
     printf("Iter: %lu\n", i);
     printf("\tPCIe Rd: %lfms\n", timing.pcie_read_t);
@@ -122,6 +125,10 @@ int main(int argc, const char **argv) {
     printf("\tHW PCIe Rd: %lfms\n", timing.hw_pcie_read_t);
     printf("\tHW Kernel: %lfms\n", timing.hw_exec_t);
     printf("\tHW PCIe Wr: %lfms\n\n", timing.hw_pcie_write_t);
+
+    printf("SVM Memcpy: \n");
+    printf("\tHW Copy In: %lfms\n", timing.svm_copyin_t);
+    printf("\tHW Copy Out: %lfms\n\n", timing.svm_copyout_t);
   }  // iter
 
   // destroy FFT input and output
@@ -133,6 +140,10 @@ int main(int argc, const char **argv) {
 
   // display performance measures
   display_measures(total_api_time, avg_rd, avg_wr, avg_exec, avg_hw_rd, avg_hw_wr, avg_hw_exec, N, dim, iter, batch, inv, sp);
+
+  printf("\n");
+  printf("SVM Copy In          = %.4lfms\n", avg_svm_copyin / iter);
+  printf("SVM Copy Out         = %.4lfms\n", avg_svm_copyout / iter);
 
   return EXIT_SUCCESS;
 }

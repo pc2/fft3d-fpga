@@ -19,6 +19,9 @@
 #define RD_GLOBALMEM 1
 #define BATCH 2
 
+#define NON_BATCH_MODE 0
+#define BATCH_MODE 1
+
 /**
  * \brief  compute an out-of-place single precision complex 3D-FFT using the BRAM of the FPGA
  * \param  N    : integer pointer addressing the size of FFT3d  
@@ -423,9 +426,9 @@ fpga_t fftfpgaf_c2c_3d_ddr(int N, const float2 *inp, float2 *out, bool inv) {
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
 fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, bool interleaving) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false};
   cl_int status = 0;
-  int num_pts = N * N * N;
+  unsigned num_pts = N * N * N;
 
   // 0 - WR_GLOBALMEM, 1 - RD_GLOBALMEM, 2 - BATCH
   int mode = WR_GLOBALMEM;
@@ -447,7 +450,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   checkError(status, "Failed to create transpose kernel");
   cl_kernel fftb_kernel = clCreateKernel(program, "fft3db", &status);
   checkError(status, "Failed to create fft3db kernel");
-  cl_kernel transpose3D_kernel = clCreateKernel(program, "transpose3D", &status);
+  cl_kernel transpose3D_kernel= clCreateKernel(program, "transpose3D", &status);
   checkError(status, "Failed to create transpose3D kernel");
 
   cl_kernel fftc_kernel = clCreateKernel(program, "fft3dc", &status);
@@ -474,37 +477,28 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   h_inData = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
   h_outData = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
 
-  double svmBufferCopyIn_timer = getTimeinMilliSec();
+  size_t num_bytes = num_pts * sizeof(float2);
+  double svm_copyin_t = 0.0;
+  svm_copyin_t = getTimeinMilliSec();
+
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map input data");
 
   // copy data into h_inData
-  size_t num_bytes = num_pts * sizeof(float2);
   memcpy(h_inData, inp, num_bytes);
-  /*
-  for(size_t i = 0; i < num_pts; i++){
-    h_inData[i].x = inp[i].x;
-    h_inData[i].y = inp[i].y;
-  }
-  */
 
   status = clEnqueueSVMUnmap(queue1, (void *)h_inData, 0, NULL, NULL);
   checkError(status, "Failed to unmap input data");
+  fft_time.svm_copyin_t += getTimeinMilliSec() - svm_copyin_t;
 
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map input data");
 
   // copy data into h_inData
-  for(size_t i = 0; i < num_pts; i++){
-    h_outData[i].x = 0.0;
-    h_outData[i].y = 0.0;
-  }
+  memset(&h_outData[0], 0, num_bytes);
 
   status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
   checkError(status, "Failed to unmap input data");
-
-  svmBufferCopyIn_timer = getTimeinMilliSec() - svmBufferCopyIn_timer;
-  printf("\nSVM Buffer Copy In Time: %lfms\n", svmBufferCopyIn_timer);
 
   /*
   * kernel arguments
@@ -536,7 +530,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
 
   // kernel stores using SVM based PCIe to host
   status = clSetKernelArgSVMPointer(store_kernel, 0, (void*)h_outData);
-  checkError(status, "Failed to set store2 kernel arg");
+  checkError(status, "Failed to set store kernel arg");
 
   cl_event startExec_event, endExec_event;
 
@@ -594,24 +588,17 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
 
   fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06);
 
-  double svmBufferCopyout_timer = getTimeinMilliSec();
+  double svm_copyout_t = 0.0;
+  svm_copyout_t = getTimeinMilliSec();
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
     (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map out data");
 
   memcpy(out, h_outData, num_bytes);
-  /*
-  for(size_t i = 0; i < num_pts; i++){
-    out[i].x = h_outData[i].x;
-    out[i].y = h_outData[i].y;
-  }
-  */
 
   status = clEnqueueSVMUnmap(queue1, (void *)h_outData, 0, NULL, NULL);
   checkError(status, "Failed to unmap out data");
-
-  svmBufferCopyout_timer = getTimeinMilliSec() - svmBufferCopyout_timer;
-  printf("SVM Buffer Copy Out Time: %lfms\n\n", svmBufferCopyout_timer);
+  fft_time.svm_copyout_t += getTimeinMilliSec() - svm_copyout_t;
 
   if (h_inData)
     clSVMFree(context, h_inData);
@@ -642,7 +629,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(int N, const float2 *inp, float2 *out, bool inv, 
   if(store_kernel) 
     clReleaseKernel(store_kernel);  
 
-  fft_time.valid = 1;
+  fft_time.valid = true;
   return fft_time;
 }
 
@@ -1133,19 +1120,13 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, const float2 *inp, float2 *out, bool inv
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
 fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool inv, int how_many) {
-  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
+  fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false};
   cl_int status = 0;
-  int num_pts = N * N * N;
-
   // 0 - WR_GLOBALMEM, 1 - RD_GLOBALMEM, 2 - BATCH
-  int mode = WR_GLOBALMEM;
+  int mode_transpose = WR_GLOBALMEM;
 
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (how_many <= 0)){
-    return fft_time;
-  }
-
-  if(!svm_enabled){
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (how_many <= 0) || !svm_enabled){
     return fft_time;
   }
 
@@ -1173,41 +1154,40 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   queue_setup();
 
   // Device memory buffers: double buffers
-  cl_mem d_inOutData_0;
-  d_inOutData_0 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  unsigned num_pts = N * N * N;
+
+  cl_mem d_inOutData_0 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_1_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
-  cl_mem d_inOutData_1;
-  d_inOutData_1 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
+  cl_mem d_inOutData_1 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * num_pts, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
   // allocate and initialize SVM buffers
+  double svm_copyin_t = 0.0;
   float2 *h_inData[how_many], *h_outData[how_many];
   for(size_t i = 0; i < how_many; i++){
     h_inData[i] = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
     h_outData[i] = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
 
+    size_t num_bytes = num_pts * sizeof(float2);
+
+    svm_copyin_t = getTimeinMilliSec();
     status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData[i], sizeof(float2) * num_pts, 0, NULL, NULL);
     checkError(status, "Failed to map input data");
 
     // copy data into h_inData
-    size_t stride = i * num_pts; 
-    for(size_t j = 0; j < num_pts; j++){
-      h_inData[i][j].x = inp[stride + j].x;
-      h_inData[i][j].y = inp[stride + j].y;
-    }
+    memcpy(&h_inData[i][0], &inp[i*num_pts], num_bytes);
 
     status = clEnqueueSVMUnmap(queue1, (void *)h_inData[i], 0, NULL, NULL);
     checkError(status, "Failed to unmap input data");
+    fft_time.svm_copyin_t += getTimeinMilliSec() - svm_copyin_t;
+
 
     status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_outData[i], sizeof(float2) * num_pts, 0, NULL, NULL);
     checkError(status, "Failed to map input data");
 
-    // copy data into h_inData
-    for(size_t j = 0; j < num_pts; j++){
-      h_outData[i][j].x = 0.0;
-      h_outData[i][j].y = 0.0;
-    }
+    // set h_outData to 0
+    memset(&h_outData[i][0], 0, num_bytes);
 
     status = clEnqueueSVMUnmap(queue1, (void *)h_outData[i], 0, NULL, NULL);
     checkError(status, "Failed to unmap input data");
@@ -1233,10 +1213,14 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   status=clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), (void*)&d_inOutData_0);
   checkError(status, "Failed to set transpose3D kernel arg");
 
-  mode = WR_GLOBALMEM;
-  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+  mode_transpose = WR_GLOBALMEM;
+  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode_transpose);
   checkError(status, "Failed to set transpose3D kernel arg");
 
+  status=clSetKernelArg(fftc_kernel, 0, sizeof(cl_int), (void*)&inverse_int);
+  checkError(status, "Failed to set fftc kernel arg");
+
+  cl_event startExec_event, endExec_event;
   /*
   *  First batch write phase
   */
@@ -1253,8 +1237,19 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, &startExec_event);
   checkError(status, "Failed to launch fetch kernel");
+
+  status = clFinish(queue1);
+  checkError(status, "Failed to finish queue1");
+  status = clFinish(queue2);
+  checkError(status, "Failed to finish queue2");
+  status = clFinish(queue3);
+  checkError(status, "Failed to finish queue3");
+  status = clFinish(queue4);
+  checkError(status, "Failed to finish queue4");
+  status = clFinish(queue5);
+  checkError(status, "Failed to finish queue5");
 
   for(size_t i = 1; i < how_many; i++){
 
@@ -1267,8 +1262,8 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
     status = clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), ((i % 2) == 1) ? (void*)&d_inOutData_1 : (void*)&d_inOutData_0);
     checkError(status, "Failed to set transpose3D kernel arg 1");
 
-    mode = BATCH;
-    status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+    mode_transpose = BATCH;
+    status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode_transpose);
     checkError(status, "Failed to set transpose3D kernel arg 2");
 
     status = clSetKernelArgSVMPointer(store_kernel, 0, (void *)h_outData[i-1]);
@@ -1312,14 +1307,14 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
     checkError(status, "Failed to finish queue7");
   }
   
-  status = clSetKernelArg(transpose3D_kernel, 0, sizeof(cl_mem), ((how_many % 2) == 0) ? (void*)&d_inOutData_0 : (void*)&d_inOutData_1);
+  status = clSetKernelArg(transpose3D_kernel, 0, sizeof(cl_mem), ((how_many % 2) == 0) ? (void*)&d_inOutData_1 : (void*)&d_inOutData_0);
   checkError(status, "Failed to set transpose3D kernel arg 0");
 
-  status = clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), ((how_many % 2) == 0) ? (void*)&d_inOutData_1 : (void*)&d_inOutData_0);
+  status = clSetKernelArg(transpose3D_kernel, 1, sizeof(cl_mem), ((how_many % 2) == 0) ? (void*)&d_inOutData_0 : (void*)&d_inOutData_1);
   checkError(status, "Failed to set transpose3D kernel arg 1");
 
-  mode = RD_GLOBALMEM;
-  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
+  mode_transpose = RD_GLOBALMEM;
+  status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode_transpose);
   checkError(status, "Failed to set transpose3D kernel arg 2");
 
   status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
@@ -1328,9 +1323,9 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   status = clEnqueueTask(queue6, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clSetKernelArgSVMPointer(store_kernel, 0, (void *)h_outData[how_many]);
+  status = clSetKernelArgSVMPointer(store_kernel, 0, (void *)h_outData[how_many - 1]);
   checkError(status, "Failed to set store kernel arg");
-  status = clEnqueueTask(queue7, store_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue7, store_kernel, 0, NULL, &endExec_event);
   checkError(status, "Failed to launch store kernel");
   
   status = clFinish(queue5);
@@ -1342,20 +1337,29 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
 
   fft_time.exec_t = getTimeinMilliSec() - fft_time.exec_t;
 
+  cl_ulong kernel_start = 0, kernel_end = 0;
+
+  clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
+  clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
+
+  fft_time.hw_exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06);
+
+  double svm_copyout_t = 0.0;
   for(size_t i = 0; i < how_many; i++){
 
-    status = clEnqueueSVMMap(queue2, CL_TRUE, CL_MAP_READ,
+    // copy data into h_outData
+    size_t num_bytes = num_pts * sizeof(float2);
+    svm_copyout_t = getTimeinMilliSec();
+
+    status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_READ,
       (void *)h_outData[i], sizeof(float2) * num_pts, 0, NULL, NULL);
     checkError(status, "Failed to map out data");
 
-    size_t stride = i * num_pts;
-    for(size_t j = 0; j < num_pts; j++){
-      out[stride + j].x = h_outData[i][j].x;
-      out[stride + j].y = h_outData[i][j].y;
-    }
+    memcpy(&out[i*num_pts], &h_outData[i][0], num_bytes);
 
-    status = clEnqueueSVMUnmap(queue2, (void *)h_outData[i], 0, NULL, NULL);
+    status = clEnqueueSVMUnmap(queue1, (void *)h_outData[i], 0, NULL, NULL);
     checkError(status, "Failed to unmap out data");
+    fft_time.svm_copyout_t += getTimeinMilliSec() - svm_copyout_t;
   }
 
   for(size_t i = 0; i < how_many; i++){
@@ -1389,6 +1393,6 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm_batch(int N, const float2 *inp, float2 *out, bool
   if(store_kernel) 
     clReleaseKernel(store_kernel);  
 
-  fft_time.valid = 1;
+  fft_time.valid = true;
   return fft_time;
 }

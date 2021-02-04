@@ -20,9 +20,11 @@ cl_device_id *devices;
 cl_device_id device = NULL;
 cl_context context = NULL;
 cl_program program = NULL;
+
 cl_command_queue queue1 = NULL, queue2 = NULL, queue3 = NULL;
 cl_command_queue queue4 = NULL, queue5 = NULL, queue6 = NULL;
 cl_command_queue queue7 = NULL, queue8 = NULL;
+
 //static int svm_handle;
 bool svm_enabled = false;
 
@@ -91,19 +93,21 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
   cl_uint num_devices;
   devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
   // Unable to find device for the OpenCL platform
+  printf("Number of devices: %u\n", num_devices);
   if(devices == NULL){
     return -3;
   }
 
   // use the first device.
   device = devices[0];
+  printf(" -- Choosing first device\n");
 
   if(use_svm){
     if(!check_valid_svm_device(device)){
       return -5;
     }
     else{
-      printf("Supports SVM \n");
+      printf(" -- Supports SVM \n");
       svm_enabled = true;
     }
   }

@@ -30,13 +30,15 @@ typedef struct {
  * Record time in milliseconds of different FPGA runtime stages
  */
 typedef struct fpga_timing {
-  double pcie_read_t;     /**< Time to read from DDR to host using PCIe bus */ 
+  double pcie_read_t;     /**< Time to read from DDR to host using PCIe bus  */ 
   double pcie_write_t;    /**< Time to write from DDR to host using PCIe bus */ 
-  double exec_t;          /**< Kernel execution time from CPU wall clock time*/
+  double exec_t;          /**< Kernel execution time from CPU wall clock time */
   double hw_pcie_read_t;  /**< HW Counter Time to read from DDR to host using PCIe bus */ 
   double hw_pcie_write_t; /**< HW Counter Time to write from DDR to host using PCIe bus */ 
-  double hw_exec_t;   /**< Kernel execution time from HW counters*/
-  int valid;          /**< Represents 1 signifying valid execution */
+  double hw_exec_t;       /**< Kernel execution time from HW counters */
+  double svm_copyin_t;    /**< Time to copy in data to SVM */
+  double svm_copyout_t;   /**< Time to copy data out of SVM */ 
+  bool valid;             /**< Represents true signifying valid execution */
 } fpga_t;
 
 /** 

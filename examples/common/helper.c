@@ -17,13 +17,13 @@
  * \param  N   : number of points in the array
  * \return true if successful
  */
-bool fftf_create_data(float2 *inp, int N){
+bool fftf_create_data(float2 *inp, unsigned num_pts){
 
-  if(inp == NULL || N <= 0){
+  if(inp == NULL || num_pts <= 0){
     return false;
   }
 
-  for(int i = 0; i < N; i++){
+  for(size_t i = 0; i < num_pts; i++){
     inp[i].x = (float)((float)rand() / (float)RAND_MAX);
     inp[i].y = (float)((float)rand() / (float)RAND_MAX);
   }
@@ -33,17 +33,17 @@ bool fftf_create_data(float2 *inp, int N){
 
 /**
  * \brief  create random double precision complex floating point values  
- * \param  inp : pointer to double2 data of size N 
- * \param  N   : number of points in the array
+ * \param  inp : pointer to double2 data of size inp_sz 
+ * \param  inp_sz : number of points in the array
  * \return true if successful
  */
-bool fft_create_data(double2 *inp, int N){
+bool fft_create_data(double2 *inp, unsigned num_pts){
 
-  if(inp == NULL || N <= 0 || N > 1024){
+  if(inp == NULL || num_pts <= 0){
     return false;
   }
 
-  for(int i = 0; i < N; i++){
+  for(size_t i = 0; i < num_pts; i++){
     inp[i].x = (double)((double)rand() / (double)RAND_MAX);
     inp[i].y = (double)((double)rand() / (double)RAND_MAX);
   }
@@ -135,6 +135,7 @@ void display_measures(double total_api_time, double pcie_rd, double pcie_wr, dou
   printf("Hw Total             = %.4lfms\n", hw_pcie_write + hw_execution + hw_pcie_read);
   printf("Throughput           = %.4lfGFLOPS/s | %.4lf GB/s\n", gflops, gBytes_per_sec);
   printf("API runtime          = %.4lfms\n", avg_api_time);
+
 }
 
 /**
