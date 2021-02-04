@@ -80,6 +80,7 @@ bool verify_fftwf(float2 *fpgaout, float2 *verify, int N, int dim, bool inverse,
   // Free FFTW data
   fftwf_free(fftw_data);
 
+  free(n);
   // destroy plan
   fftwf_destroy_plan(plan);
 
