@@ -61,6 +61,13 @@ separate_arguments(REP_FLAGS)
 set(PROF_FLAGS "-profile=all" CACHE STRING "AOC profile flags")
 separate_arguments(PROF_FLAGS)
 
+if(DEFINED ENV{LMOD_FAMILY_BSP_VERSION})
+  set(BSP_VERSION "$ENV{LMOD_FAMILY_BSP_VERSION}")
+  message("-- BSP Version: ${BSP_VERSION}")
+else()
+  message(ERROR, "No BSP Version Found")
+endif()
+
 if (INTELFPGAOPENCL_FOUND)
   add_subdirectory(fft1d)
   add_subdirectory(fft2d)

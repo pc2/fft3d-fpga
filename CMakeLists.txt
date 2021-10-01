@@ -20,9 +20,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(FFTW REQUIRED)
 message("-- FFTW found")
 
-# Link argparse as static library
-add_subdirectory(${CMAKE_SOURCE_DIR}/extern/argparse)
-
 # Add sub directories
 add_subdirectory(api)
 add_subdirectory(kernels)

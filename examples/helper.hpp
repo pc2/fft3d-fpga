@@ -14,6 +14,7 @@ struct CONFIG{
   unsigned batch;
   bool burst;
   bool use_bram;
+  bool emulate;
 };
 
 void parse_args(int argc, char* argv[], CONFIG &config);
@@ -23,5 +24,9 @@ void print_config(CONFIG config);
 double getTimeinMilliSec();
 
 void create_data(float2 *inp, const unsigned num);
+
+bool verify_fftwf(float2 *verify, float2 *fpgaout, const CONFIG config);
+
+void perf_measures(const CONFIG config, fpga_t *runtime);
 
 #endif // HELPER_HPP

@@ -23,7 +23,7 @@ function(gen_fft_targets)
     set(PROF_BSTREAM 
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/prof_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
     set(SYN_BSTREAM 
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/syn_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BSP_VERSION}/syn_${FFT_SIZE}_${kernel_fname}/${kernel_fname}.aocx")
 
     # Emulation Target
     add_custom_command(OUTPUT ${EMU_BSTREAM}

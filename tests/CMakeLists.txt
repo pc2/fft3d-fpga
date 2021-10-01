@@ -1,8 +1,5 @@
 #  Author: Arjun Ramaswami
-
 cmake_minimum_required(VERSION 3.10)
-
-add_subdirectory(../extern/gtest ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 add_executable(test_fftfpga
   #${CMAKE_CURRENT_SOURCE_DIR}/test_fft_fpga.cpp
@@ -21,11 +18,10 @@ target_include_directories(test_fftfpga
         ${IntelFPGAOpenCL_INCLUDE_DIRS}
         ${examplesfftfpga_SOURCE_DIR}/common
         ${CMAKE_SOURCE_DIR}/api/src
-        ${CMAKE_SOURCE_DIR}/extern/argparse
 )
 
 target_link_libraries(test_fftfpga PUBLIC 
-  gtest_main gtest gmock ${IntelFPGAOpenCL_LIBRARIES} argparse fftfpga m
+  gtest_main gtest gmock ${IntelFPGAOpenCL_LIBRARIES} fftfpga m
 )
 
 if(FFTW_FOUND)
