@@ -25,7 +25,7 @@ int main(int argc, char* argv[]){
   }
 
   const unsigned num = config.num;
-  const unsigned sz = pow(num, config.dim);
+  const unsigned sz = config.batch * pow(num, config.dim);
   float2 *inp = new float2[sz]();
   float2 *out = new float2[sz]();
   fpga_t runtime[config.iter];
@@ -77,10 +77,10 @@ int main(int argc, char* argv[]){
     return EXIT_FAILURE;
   }
 
-  perf_measures(config, runtime);
-
   // destroy fpga state
   fpga_final();
+
+  perf_measures(config, runtime);
 
   delete inp;
   delete out;

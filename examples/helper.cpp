@@ -7,6 +7,16 @@
 
 using namespace std;
 
+unsigned bit_reversed(unsigned x, unsigned bits) {
+  unsigned y = 0;
+  for (unsigned i = 0; i < bits; i++) {
+    y <<= 1;
+    y |= x & 1;
+    x >>= 1;
+  }
+  return y;
+}
+
 /**
  * \brief  create random single precision complex floating point values  
  * \param  inp : pointer to float2 data of size N 
@@ -103,15 +113,14 @@ bool verify_fftwf(float2 *verify, float2 *fpgaout, const CONFIG config){
   unsigned sz = pow(config.num, config.dim);
   unsigned total_sz = config.batch * sz;
 
-  fftwf_complex *fftw_data = fftwf_alloc_complex(sz);
+  fftwf_complex *fftw_data = fftwf_alloc_complex(total_sz);
 
   for(size_t i = 0; i < total_sz; i++){
     fftw_data[i][0] = verify[i].x;
     fftw_data[i][1] = verify[i].y;
   }
 
-  //const int n[] = {N, N, N};
-  int *n = (int*)calloc(config.num * config.dim , sizeof(int));
+  int *n = (int*)calloc(config.dim , sizeof(int));
   for(unsigned i = 0; i < config.dim; i++){
     n[i] = config.num;
   }
@@ -120,13 +129,34 @@ bool verify_fftwf(float2 *verify, float2 *fpgaout, const CONFIG config){
 
   fftwf_plan plan;
   if(config.inv){
-    plan = fftwf_plan_many_dft(config.dim, n, config.batch, &fftw_data[0], NULL, istride, idist, fftw_data, NULL, ostride, odist, FFTW_BACKWARD, FFTW_ESTIMATE);
+    plan = fftwf_plan_many_dft(config.dim, n, config.batch, &fftw_data[0], NULL, istride, idist, &fftw_data[0], NULL, ostride, odist, FFTW_BACKWARD, FFTW_ESTIMATE);
   }
   else{
-    plan = fftwf_plan_many_dft(config.dim, n, config.batch, &fftw_data[0], NULL, istride, idist, fftw_data, NULL, ostride, odist, FFTW_FORWARD, FFTW_ESTIMATE);
+    plan = fftwf_plan_many_dft(config.dim, n, config.batch, &fftw_data[0], NULL, istride, idist, &fftw_data[0], NULL, ostride, odist, FFTW_FORWARD, FFTW_ESTIMATE);
   }
 
   fftwf_execute(plan);
+
+  if(config.dim == 1){
+    unsigned log_dim = log2(config.num);
+    float2 *tmp = new float2[total_sz]();
+
+    for(unsigned j = 0; j < config.batch; j++){
+      for(unsigned i = 0; i < config.num; i++){
+        unsigned index = (j*config.num) + i;
+        unsigned bit_rev = (j*config.num) + bit_reversed(i, log_dim);
+        
+        tmp[index].x = fpgaout[bit_rev].x;
+        tmp[index].y = fpgaout[bit_rev].y;
+      }
+    }
+    for(unsigned i = 0; i < total_sz; i++ ){
+      fpgaout[i].x = tmp[i].x;
+      fpgaout[i].y = tmp[i].y;
+    }
+
+    delete tmp;
+  }
 
   // Verification using SNR
   float mag_sum = 0, noise_sum = 0, magnitude, noise;

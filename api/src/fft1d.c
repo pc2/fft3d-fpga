@@ -34,9 +34,7 @@ fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, un
     return fft_time;
   }
 
-#ifdef VERBOSE
-  printf("Launching%s FFT transform of %d batches \n", inv ? " inverse":"", batch);
-#endif
+  printf("-- Launching%s 1D FFT of %d batches \n", inv ? " inverse":"", batch);
 
   queue_setup();
 
@@ -47,6 +45,7 @@ fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, un
   d_outData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_CHANNEL_2_INTELFPGA, sizeof(double2) * N * batch, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
+  printf("-- Copying data from host to device\n");
   // Copy data from host to device
   cl_event writeBuf_event;
   status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(double2) * N * batch, inp, 0, NULL, &writeBuf_event);
@@ -87,6 +86,7 @@ fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, un
   size_t ls = N/8;
   size_t gs = batch * ls;
 
+  printf("-- Executing kernels\n");
   // Measure execution time
   cl_event exec_event;
   // FFT1d kernel is the SWI kernel
@@ -110,6 +110,7 @@ fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, un
   fft_time.exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06); 
 
   // Copy results from device to host
+  printf("-- Transfering results back to host\n");
   cl_event readBuf_event;
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * batch, out, 0, NULL, &readBuf_event);
   checkError(status, "Failed to copy data from device");
@@ -157,9 +158,7 @@ fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, uns
     return fft_time;
   }
 
-#ifdef VERBOSE
-  printf("Launching%s FFT transform for %d batch \n", inv ? " inverse":"", batch);
-#endif
+  printf("-- Launching%s 1D FFT of %d batches \n", inv ? " inverse":"", batch);
 
   queue_setup();
 
@@ -173,6 +172,7 @@ fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, uns
   d_outData = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_CHANNEL_2_INTELFPGA, sizeof(float2) * N * batch, NULL, &status);
   checkError(status, "Failed to allocate output device buffer\n");
 
+  printf("-- Copying data from host to device\n");
   // Copy data from host to device
   status = clEnqueueWriteBuffer(queue1, d_inData, CL_TRUE, 0, sizeof(float2) * N * batch, inp, 0, NULL, NULL);
   checkError(status, "Failed to copy data to device");
@@ -199,12 +199,10 @@ fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, uns
   status = clSetKernelArg(kernel2, 2, sizeof(cl_int), (void*)&inverse_int);
   checkError(status, "Failed to set kernel arg 2");
 
-  printf(inverse_int ? "\tInverse FFT" : "\tFFT");
-  printf(" kernel initialization is complete.\n");
-
   size_t ls = N/8;
   size_t gs = batch * ls;
 
+  printf("-- Executing kernels\n");
   cl_event startExec_event, endExec_event;
   // Measure execution time
   // Launch the kernel - we launch a single work item hence enqueue a task
@@ -223,13 +221,12 @@ fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, uns
   
   // Record execution time
   cl_ulong kernel_start = 0, kernel_end = 0;
-
   clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
   clGetEventProfilingInfo(endExec_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &kernel_end, NULL);
-
   fft_time.exec_t = (cl_double)(kernel_end - kernel_start) * (cl_double)(1e-06);
 
   // Copy results from device to host
+  printf("-- Transfering results back to host\n");
   status = clEnqueueReadBuffer(queue1, d_outData, CL_TRUE, 0, sizeof(float2) * N * batch, out, 0, NULL, NULL);
   checkError(status, "Failed to copy data from device");
 
@@ -270,9 +267,7 @@ fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv,
     return fft_time;
   }
 
-#ifdef VERBOSE
-  printf("Launching%s 1D FFT transform in DDR \n", inv ? " inverse":"");
-#endif
+  printf("-- Launching%s 1D FFT of %d batches using SVM\n", inv ? " inverse":"", batch);
 
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
@@ -291,10 +286,10 @@ fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv,
   h_inData = (float2 *)clSVMAlloc(context, CL_MEM_READ_ONLY, sizeof(float2) * num_pts, 0);
   h_outData = (float2 *)clSVMAlloc(context, CL_MEM_WRITE_ONLY, sizeof(float2) * num_pts, 0);
 
+  // copy data into h_inData
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_inData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map input data");
 
-  // copy data into h_inData
   for(size_t i = 0; i < num_pts; i++){
     h_inData[i].x = inp[i].x;
     h_inData[i].y = inp[i].y;
@@ -303,10 +298,10 @@ fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv,
   status = clEnqueueSVMUnmap(queue1, (void *)h_inData, 0, NULL, NULL);
   checkError(status, "Failed to unmap input data");
 
+  // initialize h_outData with zeroes
   status = clEnqueueSVMMap(queue1, CL_TRUE, CL_MAP_WRITE, (void *)h_outData, sizeof(float2) * num_pts, 0, NULL, NULL);
   checkError(status, "Failed to map input data");
 
-  // copy data into h_inData
   for(size_t i = 0; i < num_pts; i++){
     h_outData[i].x = 0.0;
     h_outData[i].y = 0.0;
@@ -332,6 +327,7 @@ fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv,
   size_t ls = N/8;
   size_t gs = batch * ls;
 
+  printf("-- Executing\n");
   cl_event startExec_event, endExec_event;
 
   status = clEnqueueTask(queue1, fft_kernel, 0, NULL, &endExec_event);
@@ -373,7 +369,6 @@ fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv,
 
   if(fetch_kernel) 
     clReleaseKernel(fetch_kernel);  
-
   if(fft_kernel) 
     clReleaseKernel(fft_kernel);  
 

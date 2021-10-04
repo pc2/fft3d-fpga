@@ -68,15 +68,11 @@ void* fftfpgaf_complex_malloc(size_t sz){
           -3 Unable to find devices for given OpenCL platform
           -4 Failed to create program, file not found in path
           -5 Device does not support required SVM
-
- */
+*/
 int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
   cl_int status = 0;
 
-#ifdef VERBOSE
-  printf("\tInitializing FPGA ...\n");
-#endif
-
+  printf("-- Initializing FPGA ...\n");
   // Path to binary missing
   if(path == NULL || strlen(path) == 0){
     return -1;
@@ -93,21 +89,21 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
   cl_uint num_devices;
   devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
   // Unable to find device for the OpenCL platform
-  printf("Number of devices: %u\n", num_devices);
+  printf("\n\t%u devices found\n", num_devices);
   if(devices == NULL){
     return -3;
   }
 
   // use the first device.
   device = devices[0];
-  printf(" -- Choosing first device\n");
+  printf("\t\tChoosing first device by default\n");
 
   if(use_svm){
     if(!check_valid_svm_device(device)){
       return -5;
     }
     else{
-      printf(" -- Supports SVM \n");
+      printf("\t\tDevice supports SVM \n");
       svm_enabled = true;
     }
   }
@@ -116,9 +112,7 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
   context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
   checkError(status, "Failed to create context");
 
-#ifdef VERBOSE
-  printf("\tGetting program binary from path %s ...\n", path);
-#endif
+  printf("\n\tGetting program binary from path: %s\n", path);
   // Create the program.
   program = getProgramWithBinary(context, &device, 1, path);
   if(program == NULL) {
@@ -127,9 +121,7 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
     return -4;
   }
 
-#ifdef VERBOSE
-  printf("\tBuilding program ...\n");
-#endif
+  printf("\tBuilding the program\n\n");
   // Build the program that was just created.
   status = clBuildProgram(program, 0, NULL, "", NULL, NULL);
   checkError(status, "Failed to build program");
@@ -141,10 +133,7 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
  * @brief Release FPGA Resources
  */
 void fpga_final(){
-
-#ifdef VERBOSE
-  printf("\tCleaning up FPGA resources ...\n");
-#endif
+  printf("-- Cleaning up FPGA resources ...\n");
   if(program) 
     clReleaseProgram(program);
   if(context)
@@ -156,6 +145,7 @@ void fpga_final(){
  * \brief Create a command queue for each kernel
  */
 void queue_setup(){
+  printf("-- Creating queues\n");
   cl_int status = 0;
   // Create one command queue for each kernel.
   queue1 = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
@@ -180,6 +170,7 @@ void queue_setup(){
  * \brief Release all command queues
  */
 void queue_cleanup() {
+  printf("-- Destroying queues\n");
   if(queue1) 
     clReleaseCommandQueue(queue1);
   if(queue2) 

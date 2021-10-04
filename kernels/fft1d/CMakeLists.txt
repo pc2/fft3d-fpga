@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.10)
 set(CL_PATH "${fftkernelsfpga_SOURCE_DIR}/fft1d")
 set(kernels fft1d)
 
-include(${fftkernelsfpga_SOURCE_DIR}/cmake/genKernelTargets.cmake)
+include(${fft_SOURCE_DIR}/cmake/genKernelTargets.cmake)
 
 if (INTELFPGAOPENCL_FOUND)
   gen_fft_targets(${kernels})

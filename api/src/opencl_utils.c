@@ -50,9 +50,7 @@ cl_platform_id findPlatform(const char *platform_name){
   char name_search[pl_len + 1];   // VLA
   tolowercase(platform_name, name_search);
 
-#ifndef NDEBUG
-  printf("Num of Platforms found - %d\n", num_platforms);
-#endif
+  printf("\t%d platforms found\n", num_platforms);
 
   // Search the platforms for the platform name passed as argument
   for(int i = 0; i < num_platforms; i++){
@@ -75,9 +73,7 @@ cl_platform_id findPlatform(const char *platform_name){
     }
 
     tolowercase(plat_name, plat_name_lc);
-#ifndef NDEBUG
-    printf("  %d - %s \n", i, plat_name_lc);
-#endif
+    printf("\t\t%d: %s\n", i, plat_name_lc);
     if( strstr(plat_name_lc, name_search)){
       cl_platform_id pid = pids[i];
       free(pids);

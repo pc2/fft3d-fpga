@@ -33,7 +33,7 @@ endif()
 
 add_dependencies(test_fftfpga fft3d_bram_emu)
 add_dependencies(test_fftfpga fft3d_ddr_emu)
-add_dependencies(test_fftfpga fft2d_bram_opt_emu)
+add_dependencies(test_fftfpga fft2d_bram_emu)
 add_dependencies(test_fftfpga fft2d_ddr_emu)
 add_dependencies(test_fftfpga fft1d_emu)
 

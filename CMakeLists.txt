@@ -1,5 +1,5 @@
 # Author: Arjun Ramaswami
-cmake_minimum_required (VERSION 3.10.3)
+cmake_minimum_required (VERSION 3.10)
 project(fft VERSION 2.0
           DESCRIPTION "OpenCL based FFT library for Intel FPGAs"
           LANGUAGES C CXX)
@@ -20,7 +20,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(FFTW REQUIRED)
 message("-- FFTW found")
 
-# Add sub directories
+# sub directories
 add_subdirectory(api)
 add_subdirectory(kernels)
 add_subdirectory(examples)

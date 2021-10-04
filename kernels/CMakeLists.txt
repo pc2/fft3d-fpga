@@ -54,7 +54,7 @@ endif()
 ## Flags for different target options
 set(AOC_FLAGS "-g -v -no-interleaving=default ${BOARD_PACKAGE}" CACHE STRING "AOC compiler flags")
 separate_arguments(AOC_FLAGS)
-set(EMU_FLAGS "-legacy-emulator -march=emulator" CACHE STRING "AOC emulation flags")
+set(EMU_FLAGS "-march=emulator" CACHE STRING "AOC emulation flags")
 separate_arguments(EMU_FLAGS)
 set(REP_FLAGS "-report -rtl" CACHE STRING "AOC report flags")
 separate_arguments(REP_FLAGS)
