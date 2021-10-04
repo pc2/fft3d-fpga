@@ -755,7 +755,8 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, const float2 *inp, float2 *out, bool inv
   checkError(status, "Failed to launch transpose kernel");
 
   // Check finish of transfer and computations
-  /*
+  clWaitForEvents(1, &write_event[0]);
+  clReleaseEvent(write_event[0]);
   status = clFinish(queue6);
   checkError(status, "failed to finish");
   status = clFinish(queue5);
@@ -768,9 +769,6 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, const float2 *inp, float2 *out, bool inv
   checkError(status, "failed to finish");
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-  */
-  clWaitForEvents(1, &write_event[0]);
-  clReleaseEvent(write_event[0]);
 
   // Loop over the 3 stages
   for(size_t i = 0; i < how_many-2; i++){
@@ -1037,8 +1035,8 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(int N, const float2 *inp, float2 *out, bool inv
   if (d_inData4)
     clReleaseMemObject(d_inData4);
 
-  if (d_outData2) 
-    clReleaseMemObject(d_outData2);
+  if (d_outData1) 
+    clReleaseMemObject(d_outData1);
   if (d_outData2) 
     clReleaseMemObject(d_outData2);
   if (d_outData3) 
