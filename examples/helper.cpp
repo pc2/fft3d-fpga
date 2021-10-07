@@ -31,6 +31,14 @@ void create_data(float2 *inp, const unsigned num){
     inp[i].x = (float)((float)rand() / (float)RAND_MAX);
     inp[i].y = (float)((float)rand() / (float)RAND_MAX);
   }
+
+  /*
+  printf("Creating Data\n");
+  for(unsigned i = 0; i < num; i++){
+    printf("%u: (%f, %f)\n", i, inp[i].x, inp[i].y);
+  }
+  printf("\n");
+  */
 }
 
 /**
@@ -52,6 +60,7 @@ void parse_args(int argc, char* argv[], CONFIG &config){
       ("c, batch", "Number of batches of FFT calculations in FPGA", cxxopts::value<unsigned>()->default_value("1") )
       ("t, burst", "Toggle to use burst interleaved global memory accesses  in FPGA", cxxopts::value<bool>()->default_value("false") )
       ("m, use_bram", "Toggle to use BRAM instead of DDR for 3D Transpose  ", cxxopts::value<bool>()->default_value("false") )
+      ("s, use_usm", "Toggle to use Unified Shared Memory features for data transfers between host and device", cxxopts::value<bool>()->default_value("false") )
       ("e, emulate", "Toggle to enable emulation ", cxxopts::value<bool>()->default_value("false") )
       ("h,help", "Print usage");
     auto opt = options.parse(argc, argv);
@@ -71,6 +80,7 @@ void parse_args(int argc, char* argv[], CONFIG &config){
     config.burst = opt["burst"].as<bool>();
     config.use_bram = opt["use_bram"].as<bool>();
     config.emulate = opt["emulate"].as<bool>();
+    config.use_usm = opt["use_usm"].as<bool>();
 
     if(opt.count("path")){
       config.path = opt["path"].as<string>();
@@ -98,6 +108,7 @@ void print_config(CONFIG config){
   printf("Transpose3D        : %s \n", config.use_bram ? "BRAM":"DDR");
   printf("Burst Interleaving : %s \n", config.burst ? "Yes":"No");
   printf("Emulation          : %s \n", config.emulate ? "Yes":"No");
+  printf("USM Feature        : %s \n", config.use_usm ? "Yes":"No");
   printf("--------------------------------------------\n\n");
 }
 
@@ -221,9 +232,9 @@ void perf_measures(const CONFIG config, fpga_t *runtime){
     variance.pcie_read_t += pow(runtime[i].pcie_read_t - avg_runtime.pcie_read_t, 2);
     variance.pcie_write_t += pow(runtime[i].pcie_write_t - avg_runtime.pcie_write_t, 2);
   }
-  sd.exec_t = variance.exec_t / config.iter;
-  sd.pcie_read_t = variance.pcie_read_t / config.iter;
-  sd.pcie_write_t = variance.pcie_write_t / config.iter;
+  sd.exec_t = sqrt(variance.exec_t / config.iter);
+  sd.pcie_read_t = sqrt(variance.pcie_read_t / config.iter);
+  sd.pcie_write_t = sqrt(variance.pcie_write_t / config.iter);
 
   double avg_total_runtime = avg_runtime.exec_t + avg_runtime.pcie_write_t + avg_runtime.pcie_read_t;
 
@@ -245,7 +256,7 @@ void perf_measures(const CONFIG config, fpga_t *runtime){
   printf("Throughput          = %.4lfGFLOPS/s | %.4lf GB/s\n", gflops, gBytes_per_sec);
   if(config.iter > 1){
     printf("\n");
-    printf("%s", config.iter>1 ? "Standard Deviations of iterations\n":"");
+    printf("%s", config.iter>1 ? "Deviation of runtimes among iterations\n":"");
     printf("PCIe Write          = %.4lfms\n", sd.pcie_write_t);
     printf("Kernel Execution    = %.4lfms\n", sd.exec_t);
     printf("PCIe Read           = %.4lfms\n", sd.pcie_read_t);

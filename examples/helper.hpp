@@ -15,6 +15,7 @@ struct CONFIG{
   bool burst;
   bool use_bram;
   bool emulate;
+  bool use_usm;
 };
 
 void parse_args(int argc, char* argv[], CONFIG &config);

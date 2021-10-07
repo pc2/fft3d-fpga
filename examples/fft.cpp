@@ -17,8 +17,8 @@ int main(int argc, char* argv[]){
   else
     platform = "Intel(R) FPGA SDK for OpenCL(TM)";
   
-  bool use_svm = false;
-  int isInit = fpga_initialize(platform, config.path.data(), use_svm);
+  bool use_usm = false;
+  int isInit = fpga_initialize(platform, config.path.data(), use_usm);
   if(isInit != 0){
     cerr << "FPGA initialization error\n";
     return EXIT_FAILURE;
@@ -52,6 +52,13 @@ int main(int argc, char* argv[]){
             runtime[i] = fftfpgaf_c2c_3d_bram(num, inp, out, inv, burst);
           else if(!config.use_bram && (config.batch > 1))
             runtime[i] = fftfpgaf_c2c_3d_ddr_batch(num, inp, out, inv, burst, config.batch);
+          else if (use_usm == 1){
+            if(config.batch > 1)
+              runtime[i] = fftfpgaf_c2c_3d_ddr_svm_batch(num, inp, out, inv, config.batch);
+            else
+              runtime[i] = fftfpgaf_c2c_3d_ddr_svm(num, inp, out, inv, burst);
+            break;
+          }
           else
             runtime[i] = fftfpgaf_c2c_3d_ddr(num, inp, out, inv);
           break;

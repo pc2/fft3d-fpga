@@ -89,21 +89,21 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
   cl_uint num_devices;
   devices = getDevices(platform, CL_DEVICE_TYPE_ALL, &num_devices);
   // Unable to find device for the OpenCL platform
-  printf("\n\t%u devices found\n", num_devices);
+  printf("\n-- %u devices found\n", num_devices);
   if(devices == NULL){
     return -3;
   }
 
   // use the first device.
   device = devices[0];
-  printf("\t\tChoosing first device by default\n");
+  printf("\tChoosing first device by default\n");
 
   if(use_svm){
     if(!check_valid_svm_device(device)){
       return -5;
     }
     else{
-      printf("\t\tDevice supports SVM \n");
+      printf("-- Device supports SVM \n");
       svm_enabled = true;
     }
   }
@@ -112,7 +112,7 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
   context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
   checkError(status, "Failed to create context");
 
-  printf("\n\tGetting program binary from path: %s\n", path);
+  printf("\n-- Getting program binary from path: %s\n", path);
   // Create the program.
   program = getProgramWithBinary(context, &device, 1, path);
   if(program == NULL) {
@@ -121,7 +121,7 @@ int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
     return -4;
   }
 
-  printf("\tBuilding the program\n\n");
+  printf("-- Building the program\n\n");
   // Build the program that was just created.
   status = clBuildProgram(program, 0, NULL, "", NULL, NULL);
   checkError(status, "Failed to build program");
@@ -145,7 +145,6 @@ void fpga_final(){
  * \brief Create a command queue for each kernel
  */
 void queue_setup(){
-  printf("-- Creating queues\n");
   cl_int status = 0;
   // Create one command queue for each kernel.
   queue1 = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
@@ -170,7 +169,6 @@ void queue_setup(){
  * \brief Release all command queues
  */
 void queue_cleanup() {
-  printf("-- Destroying queues\n");
   if(queue1) 
     clReleaseCommandQueue(queue1);
   if(queue2) 
