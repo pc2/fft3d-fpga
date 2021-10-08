@@ -31,14 +31,6 @@ void create_data(float2 *inp, const unsigned num){
     inp[i].x = (float)((float)rand() / (float)RAND_MAX);
     inp[i].y = (float)((float)rand() / (float)RAND_MAX);
   }
-
-  /*
-  printf("Creating Data\n");
-  for(unsigned i = 0; i < num; i++){
-    printf("%u: (%f, %f)\n", i, inp[i].x, inp[i].y);
-  }
-  printf("\n");
-  */
 }
 
 /**
@@ -95,7 +87,7 @@ void parse_args(int argc, char* argv[], CONFIG &config){
   }
 }
 
-void print_config(CONFIG config){
+void print_config(const CONFIG config){
   printf("\n------------------------------------------\n");
   printf("FFT CONFIGURATION: \n");
   printf("--------------------------------------------\n");
@@ -119,7 +111,7 @@ void print_config(CONFIG config){
  * \param config: struct of program state 
  * \return true if verification passed
  */
-bool verify_fftwf(float2 *verify, float2 *fpgaout, const CONFIG config){
+bool verify_fftwf(const float2 *verify, float2 *fpgaout, const CONFIG config){
 
   unsigned sz = pow(config.num, config.dim);
   unsigned total_sz = config.batch * sz;

@@ -24,7 +24,7 @@
  * \param  batch : number of batched executions of 1D FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, unsigned batch){
+fpga_t fftfpga_c2c_1d(const unsigned N, const double2 *inp, double2 *out, const bool inv, const unsigned batch){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel fetch_kernel = NULL, fft_kernel = NULL;
   cl_int status = 0;
@@ -33,8 +33,6 @@ fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, un
   if(inp == NULL || out == NULL || ((N & (N-1)) !=0)){
     return fft_time;
   }
-
-  printf("-- Launching%s 1D FFT of %d batches \n", inv ? " inverse":"", batch);
 
   queue_setup();
 
@@ -143,11 +141,11 @@ fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, un
  * \param  N    : unsigned integer to the number of points in FFT1d  
  * \param  inp  : float2 pointer to input data of size N
  * \param  out  : float2 pointer to output data of size N
- * \param  inv  : true for backward transforms
+ * \param  inv  : toggle for backward transforms
  * \param  batch : number of batched executions of 1D FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, unsigned batch){
+fpga_t fftfpgaf_c2c_1d(const unsigned N, const float2 *inp, float2 *out, const bool inv, const unsigned batch){
 
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel kernel1 = NULL, kernel2 = NULL;
@@ -253,11 +251,11 @@ fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, uns
  * \param  N    : unsigned integer to the number of points in 1D FFT  
  * \param  inp  : float2 pointer to input data of size N
  * \param  out  : float2 pointer to output data of size N
- * \param  inv  : int toggle to activate backward FFT
+ * \param  inv  : toggle to activate backward FFT
  * \param  batch : number of batched executions of 1D FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv, unsigned batch){
+fpga_t fftfpgaf_c2c_1d_svm(const unsigned N, const float2 *inp, float2 *out, const bool inv, const unsigned batch){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_int status = 0;
   unsigned num_pts = N * batch;

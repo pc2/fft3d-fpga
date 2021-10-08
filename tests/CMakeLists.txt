@@ -1,23 +1,22 @@
 #  Author: Arjun Ramaswami
 cmake_minimum_required(VERSION 3.10)
+project(testfftfpga VERSION 2.0
+            DESCRIPTION "Tests for FFT using FPGAs"
+            LANGUAGES C CXX)
 
 add_executable(test_fftfpga
-  #${CMAKE_CURRENT_SOURCE_DIR}/test_fft_fpga.cpp
       test_fft_setup.cpp
       test_fft1d_fpga.cpp
       test_fft2d_fpga.cpp
       test_fft3d_fpga.cpp
       test_opencl_utils.cpp
-      test_misc.cpp
-    ${examplesfftfpga_SOURCE_DIR}/common/helper.c
-    ${examplesfftfpga_SOURCE_DIR}/common/verify_fftw.c
 )
 
 target_include_directories(test_fftfpga
-  PUBLIC ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR}
-        ${IntelFPGAOpenCL_INCLUDE_DIRS}
-        ${examplesfftfpga_SOURCE_DIR}/common
-        ${CMAKE_SOURCE_DIR}/api/src
+  PUBLIC  ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR}
+          ${IntelFPGAOpenCL_INCLUDE_DIRS}
+          ${examplesfftfpga_SOURCE_DIR}
+          ${CMAKE_SOURCE_DIR}/api/src
 )
 
 target_link_libraries(test_fftfpga PUBLIC 

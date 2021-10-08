@@ -15,7 +15,6 @@ extern cl_command_queue queue4, queue5, queue6;
 extern cl_command_queue queue7, queue8;
 
 extern bool svm_enabled;
-//extern int svm_handle;
 
 extern void queue_setup();
 extern void queue_cleanup();

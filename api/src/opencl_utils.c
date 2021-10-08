@@ -142,7 +142,7 @@ cl_program getProgramWithBinary(cl_context context, cl_device_id *devices, cl_ui
   char *binary, *binaries[num_devices];
   cl_int bin_status, status;
 
-  if(num_devices == 0)
+  if(num_devices == 0 || context == NULL)
     return NULL;
 
   if (!fileExists(path)){

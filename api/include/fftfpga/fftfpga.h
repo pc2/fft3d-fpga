@@ -53,7 +53,7 @@ extern "C" {
           -4 Failed to create program, file not found in path
           -5 Device does not support required SVM
  */
-extern int fpga_initialize(const char *platform_name, const char *path, bool use_svm);
+extern int fpga_initialize(const char *platform_name, const char *path, const bool use_svm);
 
 /** 
  * @brief Release FPGA Resources
@@ -65,14 +65,14 @@ extern void fpga_final();
  * @param sz  : size_t - size to allocate
  * @return void ptr or NULL
  */
-extern void* fftfpga_complex_malloc(size_t sz);
+extern void* fftfpga_complex_malloc(const size_t sz);
 
 /** 
  * @brief Allocate memory of single precision complex floating points
  * @param sz  : size_t : size to allocate
  * @return void ptr or NULL
  */
-extern void* fftfpgaf_complex_malloc(size_t sz);
+extern void* fftfpgaf_complex_malloc(const size_t sz);
 
 /**
  * @brief  compute an out-of-place double precision complex 1D-FFT on the FPGA
@@ -83,7 +83,7 @@ extern void* fftfpgaf_complex_malloc(size_t sz);
  * @param  iter : number of iterations of the N point FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool inv, unsigned iter);
+extern fpga_t fftfpga_c2c_1d(const unsigned N, const double2 *inp, double2 *out, const bool inv, const unsigned iter);
 
 /**
  * @brief  compute an out-of-place single precision complex 1D-FFT on the FPGA
@@ -94,7 +94,7 @@ extern fpga_t fftfpga_c2c_1d(unsigned N, const double2 *inp, double2 *out, bool 
  * @param  iter : number of iterations of the N point FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool inv, unsigned iter);
+extern fpga_t fftfpgaf_c2c_1d(const unsigned N, const float2 *inp, float2 *out, const bool inv, const unsigned iter);
 
 /**
  * @brief  compute an out-of-place single precision complex 1D-FFT on the FPGA
@@ -105,7 +105,7 @@ extern fpga_t fftfpgaf_c2c_1d(unsigned N, const float2 *inp, float2 *out, bool i
  * @param  iter : number of iterations of the N point FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_1d_svm(unsigned N, const float2 *inp, float2 *out, bool inv, unsigned batch);
+extern fpga_t fftfpgaf_c2c_1d_svm(const unsigned N, const float2 *inp, float2 *out, const bool inv, const unsigned batch);
 
 /**
  * @brief  compute an out-of-place single precision complex 2D-FFT using the BRAM of the FPGA

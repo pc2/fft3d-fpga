@@ -34,7 +34,7 @@ bool svm_enabled = false;
  * @param svm : 1 if svm
  * @return void ptr or NULL
  */
-void* fftfpga_complex_malloc(size_t sz){
+void* fftfpga_complex_malloc(const size_t sz){
   if(sz == 0){
     return NULL;
   }
@@ -49,7 +49,7 @@ void* fftfpga_complex_malloc(size_t sz){
  * @param svm : 1 if svm
  * @return void ptr or NULL
  */
-void* fftfpgaf_complex_malloc(size_t sz){
+void* fftfpgaf_complex_malloc(const size_t sz){
 
   if(sz == 0){
     return NULL;
@@ -69,7 +69,7 @@ void* fftfpgaf_complex_malloc(size_t sz){
           -4 Failed to create program, file not found in path
           -5 Device does not support required SVM
 */
-int fpga_initialize(const char *platform_name, const char *path, bool use_svm){
+int fpga_initialize(const char *platform_name, const char *path, const bool use_svm){
   cl_int status = 0;
 
   printf("-- Initializing FPGA ...\n");

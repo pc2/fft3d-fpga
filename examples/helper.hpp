@@ -20,13 +20,13 @@ struct CONFIG{
 
 void parse_args(int argc, char* argv[], CONFIG &config);
 
-void print_config(CONFIG config);
+void print_config(const CONFIG config);
 
 double getTimeinMilliSec();
 
 void create_data(float2 *inp, const unsigned num);
 
-bool verify_fftwf(float2 *verify, float2 *fpgaout, const CONFIG config);
+bool verify_fftwf(const float2 *verify, float2 *fpgaout, const CONFIG config);
 
 void perf_measures(const CONFIG config, fpga_t *runtime);
 

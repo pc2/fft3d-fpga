@@ -1,12 +1,10 @@
 //  Author: Arjun Ramaswami
 
-#include "gtest/gtest.h"  // finds this because gtest is linked
+#include <iostream>
 #include <math.h>
-#include <stdbool.h>
-#ifdef USE_FFTW
-  #include <fftw3.h>
-#endif
+#include <fftw3.h>
 
+#include "gtest/gtest.h" 
 extern "C" {
   #include "CL/opencl.h"
   #include "fftfpga/fftfpga.h"
@@ -23,10 +21,12 @@ TEST(fftFPGASetupTest, ValidInit){
   EXPECT_EQ(fpga_initialize("TEST", "fft1d_emulate.aocx", false), -2);
 
   // wrong path argument
-  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "TEST", false), -4);
+  const char* platform_name = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
+  EXPECT_EQ(fpga_initialize(platform_name, "TEST", false), -4);
 
   // right path and platform names
-  EXPECT_EQ(fpga_initialize("Intel(R) FPGA", "emu_64_fft3d_bram/fft3d_bram.aocx", false), 0);
+  const char* path = "p520_hpc_sg280l/emulation/fft3d_bram_64_nointer/fft3d_bram.aocx";
+  EXPECT_EQ(fpga_initialize(platform_name, path, false), 0);
   fpga_final();
 }
 
