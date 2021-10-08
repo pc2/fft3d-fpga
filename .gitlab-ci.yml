@@ -15,7 +15,8 @@ build-all:
     - chmod +x bin/fft
   artifacts:
     paths:
-      - build/bin/p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d_64.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft2d_bram_64_nointer/fft2d_bram.aocx
       - build/bin/p520_hpc_sg280l/emulation/fft2d_ddr_64_nointer/fft2d_ddr.aocx
       - build/bin/p520_hpc_sg280l/emulation/fft3d_ddr_64_nointer/fft3d_ddr.aocx
       - build/bin/p520_hpc_sg280l/emulation/fft3d_bram_64_nointer/fft3d_bram.aocx
