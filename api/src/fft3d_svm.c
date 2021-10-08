@@ -14,7 +14,6 @@
 #include "opencl_utils.h"
 #include "misc.h"
 #include "svm.h"
-#include "/opt/intelFPGA_pro/19.2.0/hld/board/custom_platform_toolkit/mmd/aocl_mmd.h"
 
 #define WR_GLOBALMEM 0
 #define RD_GLOBALMEM 1
@@ -22,11 +21,11 @@
 
 /**
  * \brief  compute an out-of-place single precision complex 3D FFT using the DDR for 3D Transpose where the data access between the host and the FPGA is using Shared Virtual Memory (SVM)
- * \param  N    : integer pointer addressing the size of FFT3d  
+ * \param  N    : unsigned integer denoting  the size of FFT3d  
  * \param  inp  : float2 pointer to input data of size [N * N * N]
  * \param  out  : float2 pointer to output data of size [N * N * N]
- * \param  inv  : int toggle to activate backward FFT
- * \param  interleaving : 1 if using burst interleaved global memory buffers
+ * \param  inv  : toggle to activate backward FFT
+ * \param  interleaving : toggle to use  burst interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
 fpga_t fftfpgaf_c2c_3d_ddr_svm(const unsigned N, const float2 *inp, float2 *out, const bool inv, const bool interleaving) {
@@ -234,11 +233,11 @@ fpga_t fftfpgaf_c2c_3d_ddr_svm(const unsigned N, const float2 *inp, float2 *out,
 
 
 /**
- * \brief compute an batched out-of-place single precision complex 3D-FFT using the DDR of the FPGA for 3D Transpose and for data transfers between host's main memory and FPGA using Shared Virtual Memory 
- * \param N    : integer pointer addressing the size of FFT3d  
+ * \brief compute a batched out-of-place single precision complex 3D-FFT using the DDR of the FPGA for 3D Transpose and for data transfers between host's main memory and FPGA using Shared Virtual Memory 
+ * \param N    : unsigned integer denoting the size of FFT3d  
  * \param inp  : float2 pointer to input data of size [N * N * N]
  * \param out  : float2 pointer to output data of size [N * N * N]
- * \param inv  : int toggle to activate backward FFT
+ * \param inv  : toggle to activate backward FFT
  * \param how_many : number of batched computations
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
