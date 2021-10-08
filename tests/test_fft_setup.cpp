@@ -21,7 +21,7 @@ TEST(fftFPGASetupTest, ValidInit){
   EXPECT_EQ(fpga_initialize("TEST", "fft1d_emulate.aocx", false), -2);
 
   // wrong path argument
-  const char* platform_name = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
+  const char* platform_name = "intel(r) fpga sdk for opencl(tm)";
   EXPECT_EQ(fpga_initialize(platform_name, "TEST", false), -4);
 
   // right path and platform names
