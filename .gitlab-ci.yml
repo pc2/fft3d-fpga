@@ -12,23 +12,15 @@ build-all:
     - mkdir -p build && cd build
     - cmake -DLOG_FFT_SIZE=6 -DCMAKE_BUILD_TYPE=Release ..
     - make
-    - make fft1d_emu
-    - make fft2d_ddr_emu
-    - make fft2d_bram_opt_emu
-    - make fft3d_ddr_emu
-    - make fft3d_bram_emu
-    - chmod +x bin/fft3d_bram bin/fft3d_ddr bin/fft2d bin/fft1d bin/test_fftfpga
+    - chmod +x bin/fft
   artifacts:
     paths:
-      - build/bin/emu_64_fft1d/fft1d.aocx
-      - build/bin/emu_64_fft2d_ddr/fft2d_ddr.aocx
-      - build/bin/emu_64_fft2d_bram_opt/fft2d_bram_opt.aocx
-      - build/bin/emu_64_fft3d_ddr/fft3d_ddr.aocx
-      - build/bin/emu_64_fft3d_bram/fft3d_bram.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d_64.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft2d_ddr_64_nointer/fft2d_ddr.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft3d_ddr_64_nointer/fft3d_ddr.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft3d_bram_64_nointer/fft3d_bram.aocx
       - build/bin/test_fftfpga
-      - build/bin/fft3d
-      - build/bin/fft2d
-      - build/bin/fft1d
+      - build/bin/fft
 
 test-all:
   stage: test
