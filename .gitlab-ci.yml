@@ -27,6 +27,6 @@ test-all:
   stage: test
   script:
     - cd build/bin/
-    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test_fftfpga
+    - CL_CONFIG_CPU_EMULATE_DEVICES=1 ./test_fftfpga
   dependencies:
     - build-all
