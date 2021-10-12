@@ -62,7 +62,7 @@
  */
 
 // Include source code for an engine that produces 8 points each step
-#include "fft_8.cl" 
+#include "../common/fft_8.cl" 
 
 // Source the log(size) (log(1k) = 10) from a header shared with the host code
 #include "fft_config.h"

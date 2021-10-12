@@ -31,7 +31,7 @@ TEST_F(OpenCLUtilsTest, FindValidPlatform){
   EXPECT_EQ(findPlatform("test"), nullptr);
 
   // correct platform name
-  pl_id = findPlatform("intel(r) fpga sdk for opencl(tm)");
+  pl_id = findPlatform("Intel(R) FPGA Emulation Platform for OpenCL(TM)");
   ASSERT_NE(pl_id, nullptr);
 }
 

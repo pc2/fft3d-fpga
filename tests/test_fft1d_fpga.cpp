@@ -49,7 +49,7 @@ TEST(fft1dFPGATest, InputValiditySVM){
   fft_time = fftfpgaf_c2c_1d_svm(N, test, test, false, 1);
   EXPECT_EQ(fft_time.valid, 0);
 
-  int isInit = fpga_initialize("intel(r) fpga sdk for opencl(tm)", "p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx", true);
+  int isInit = fpga_initialize("Intel(R) FPGA Emulation Platform for OpenCL(TM)", "p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx", true);
   ASSERT_EQ(isInit, 0);
 
   // null inp ptr input

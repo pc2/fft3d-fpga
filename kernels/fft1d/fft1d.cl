@@ -44,7 +44,7 @@
  */
 
 // Include source code for an engine that produces 8 points each step
-#include "fft_8.cl" 
+#include "../common/fft_8.cl" 
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 

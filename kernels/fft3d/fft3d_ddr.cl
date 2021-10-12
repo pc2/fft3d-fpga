@@ -1,7 +1,7 @@
 // Author: Arjun Ramaswami
 
 #include "fft_config.h"
-#include "fft_8.cl" 
+#include "../common/fft_8.cl" 
 #include "../matrixTranspose/diagonal_bitrev.cl"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
@@ -318,7 +318,7 @@ kernel void transpose3D(
       unsigned index_wr = (batch_index * N * N * N) + (zdim * N * N) + (ydim * N) + xdim; 
 
       //float2x8 data, data_out;
-      if (step < (N * DEPTH)) {
+      if (step < ((N * DEPTH)  - initial_delay)) {
         data_wr.i0 = src[index_wr + 0];
         data_wr.i1 = src[index_wr + 1];
         data_wr.i2 = src[index_wr + 2];

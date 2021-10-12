@@ -1,7 +1,7 @@
 //  Author: Arjun Ramaswami
 
 #include "fft_config.h"
-#include "fft_8.cl" 
+#include "../common/fft_8.cl" 
 #include "../matrixTranspose/diagonal_bitrev.cl"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
