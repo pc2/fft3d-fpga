@@ -2,19 +2,12 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
-- configurable platform name
-- choice of platform (currently chooses first platform)
-- choice of device (currently chooses first device)
-- loads binary to multiple devices (currently only the first device)
-- batch mode
-- xilinx fpgas
+- configurable CL platform and device
 
 ## [2.0.0] - []
 
-- SVM API: coarse grained SVM support for Intel FPGAs
-- Doxygen Doc
-- Emulator option using runtime cmd line args
-- Command line argument to enable and disable burst interleaved global memory accesses
+- Batched 3D FFT to schedule multiple transformations by overlapping data transfers and FFT computations
+- Using OpenCL Shared Virtual Memory (SVM) for data transfers between FPGA and host
 
 ## [1.0.0] - [16.06.2020]
 
