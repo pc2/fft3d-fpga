@@ -32,7 +32,7 @@ function(gen_fft_targets)
       VERBATIM
     )
     
-    add_custom_target(${kernel_fname}_emu
+    add_custom_target(${kernel_fname}_emulate
       DEPENDS ${EMU_BSTREAM} ${CL_SRC} ${CL_HEADER}
       COMMENT 
         "Building ${kernel_fname} for emulation to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -45,7 +45,7 @@ function(gen_fft_targets)
       VERBATIM
     )
     
-    add_custom_target(${kernel_fname}_rep
+    add_custom_target(${kernel_fname}_report
       DEPENDS ${REP_BSTREAM} ${CL_SRC} ${CL_HEADER}
       COMMENT 
         "Building a report for ${kernel_fname} to folder ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
