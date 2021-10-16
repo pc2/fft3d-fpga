@@ -36,11 +36,19 @@ int main(int argc, char* argv[]){
     const bool burst = config.burst;
 
     for(unsigned i = 0; i < config.iter; i++){
+      cout << i << ": Calculating FFT - " << endl;
       switch(config.dim) {
-        case 1: runtime[i] = fftfpgaf_c2c_1d(num, inp, out, inv, config.batch);
-                break;
+        case 1: {
+          if(config.use_usm)
+            runtime[i] = fftfpgaf_c2c_1d_svm(num, inp, out, inv, config.batch);
+          else
+            runtime[i] = fftfpgaf_c2c_1d(num, inp, out, inv, config.batch);
+          break;
+        }
         case 2: {
-          if(config.use_bram)
+          if(config.use_bram && config.use_usm)
+            runtime[i] = fftfpgaf_c2c_2d_bram_svm(num, inp, out, inv, config.batch);
+          else if(config.use_bram && !config.use_usm)
             runtime[i] = fftfpgaf_c2c_2d_bram(num, inp, out, inv, burst, config.batch);
           else
             runtime[i] = fftfpgaf_c2c_2d_ddr(num, inp, out, inv); 
