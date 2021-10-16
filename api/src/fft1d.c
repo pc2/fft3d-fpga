@@ -265,8 +265,6 @@ fpga_t fftfpgaf_c2c_1d_svm(const unsigned N, const float2 *inp, float2 *out, con
     return fft_time;
   }
 
-  printf("-- Launching%s 1D FFT of %d batches using SVM\n", inv ? " inverse":"", batch);
-
   // Can't pass bool to device, so convert it to int
   int inverse_int = (int)inv;
 

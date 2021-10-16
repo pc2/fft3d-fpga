@@ -24,7 +24,7 @@
  * \param  iter : int toggle to activate backward FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_ddr(int N, const float2 *inp, float2 *out, bool inv){
+fpga_t fftfpgaf_c2c_2d_ddr(const unsigned N, const float2 *inp, float2 *out, const bool inv){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0.0, 0};
   cl_kernel fetch_kernel = NULL, fft_kernel = NULL, transpose_kernel = NULL;
   cl_int status = 0;
@@ -34,10 +34,6 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, const float2 *inp, float2 *out, bool inv){
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
     return fft_time;
   }
-
-#ifdef VERBOSE
-  printf("Launching%s 2d FFT transform \n", inv ? " inverse":"");
-#endif
 
   queue_setup();
 
@@ -171,23 +167,19 @@ fpga_t fftfpgaf_c2c_2d_ddr(int N, const float2 *inp, float2 *out, bool inv){
  * \param  interleaving : enable interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_bram(int N, const float2 *inp, float2 *out, bool inv, bool interleaving, int how_many){
+fpga_t fftfpgaf_c2c_2d_bram(const unsigned N, const float2 *inp, float2 *out, const bool inv, const bool interleaving, const unsigned how_many){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_kernel ffta_kernel = NULL, fftb_kernel = NULL;
   cl_kernel fetch_kernel = NULL, store_kernel = NULL;
   cl_kernel transpose_kernel = NULL;
 
   cl_int status = 0;
-  int num_pts = how_many * N * N;
+  unsigned num_pts = how_many * N * N;
 
   // if N is not a power of 2
   if(inp == NULL || out == NULL || ( (N & (N-1)) !=0)){
     return fft_time;
   }
-
-#ifdef VERBOSE
-  printf("Launching%s 3d FFT transform in DDR \n", inv ? " inverse":"");
-#endif
 
   queue_setup();
 
@@ -216,7 +208,6 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, const float2 *inp, float2 *out, bool inv, boo
 
   status = clFinish(queue1);
   checkError(status, "failed to finish");
-
 
   cl_ulong writeBuf_start = 0.0, writeBuf_end = 0.0;
 
@@ -354,23 +345,18 @@ fpga_t fftfpgaf_c2c_2d_bram(int N, const float2 *inp, float2 *out, bool inv, boo
  * \param  inv  : int toggle to activate backward FFT
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
-fpga_t fftfpgaf_c2c_2d_bram_svm(int N, const float2 *inp, float2 *out, bool inv, int how_many){
+fpga_t fftfpgaf_c2c_2d_bram_svm(const unsigned N, const float2 *inp, float2 *out, const bool inv, const unsigned how_many){
   fpga_t fft_time = {0.0, 0.0, 0.0, 0};
   cl_int status = 0;
-  int num_pts = how_many * N * N;
+  unsigned num_pts = how_many * N * N;
 
   cl_kernel ffta_kernel = NULL, fftb_kernel = NULL;
   cl_kernel fetch_kernel = NULL, store_kernel = NULL;
   cl_kernel transpose_kernel = NULL;
 
   // if N is not a power of 2
-  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (!svm_enabled)){
+  if(inp == NULL || out == NULL || ( (N & (N-1)) !=0) || (!svm_enabled))
     return fft_time;
-  }
-
-#ifdef VERBOSE
-  printf("Launching%s 2d FFT transform in BRAM using SVM\n", inv ? " inverse":"");
-#endif
 
   queue_setup();
 

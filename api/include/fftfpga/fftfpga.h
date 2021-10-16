@@ -117,7 +117,7 @@ extern fpga_t fftfpgaf_c2c_1d_svm(const unsigned N, const float2 *inp, float2 *o
  * @param  how_many : number of 2D FFTs to computer, default 1
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_2d_bram(int N, const float2 *inp, float2 *out, bool inv, bool interleaving, int how_many);
+extern fpga_t fftfpgaf_c2c_2d_bram(const unsigned N, const float2 *inp, float2 *out, const bool inv, const bool interleaving, const unsigned how_many);
 
 /**
  * @brief  compute an out-of-place single precision complex 2DFFT using the BRAM of the FPGA and Shared Virtual Memory for Host to Device Communication
@@ -128,7 +128,7 @@ extern fpga_t fftfpgaf_c2c_2d_bram(int N, const float2 *inp, float2 *out, bool i
  * @param  how_many : number of 2D FFTs to computer, default 1
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_2d_bram_svm(int N, const float2 *inp, float2 *out, bool inv, int how_many);
+extern fpga_t fftfpgaf_c2c_2d_bram_svm(const unsigned N, const float2 *inp, float2 *out, const bool inv, const unsigned how_many);
 
 /**
  * @brief  compute an out-of-place single precision complex 2D-FFT using the DDR of the FPGA
@@ -138,7 +138,7 @@ extern fpga_t fftfpgaf_c2c_2d_bram_svm(int N, const float2 *inp, float2 *out, bo
  * @param  inv  : int toggle to activate backward FFT
  * @return fpga_t : time taken in milliseconds for data transfers and execution
  */
-extern fpga_t fftfpgaf_c2c_2d_ddr(int N, const float2 *inp, float2 *out, bool inv);
+extern fpga_t fftfpgaf_c2c_2d_ddr(const unsigned N, const float2 *inp, float2 *out, const bool inv);
 
 /**
  * @brief  compute an out-of-place single precision complex 3D-FFT using the BRAM of the FPGA
