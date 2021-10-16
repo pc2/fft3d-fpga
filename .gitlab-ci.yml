@@ -10,6 +10,7 @@ build-all:
   script:
     - rm -rf build
     - mkdir -p build && cd build
+    - srun -A pc2-mitarbeiter -p fpga --constraint=emul --pty bash
     - cmake -DLOG_FFT_SIZE=6 -DCMAKE_BUILD_TYPE=Release ..
     - make
     - chmod +x bin/fft
