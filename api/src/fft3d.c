@@ -135,19 +135,19 @@ fpga_t fftfpgaf_c2c_3d_bram(const unsigned N, const float2 *inp, float2 *out, co
 
   // Wait for all command queues to complete pending events
   status = clFinish(queue1);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue1");
   status = clFinish(queue2);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue2");
   status = clFinish(queue3);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue3");
   status = clFinish(queue4);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue4");
   status = clFinish(queue5);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue5");
   status = clFinish(queue6);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue6");
   status = clFinish(queue7);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue7");
 
   cl_ulong kernel_start = 0, kernel_end = 0;
 
@@ -320,19 +320,19 @@ fpga_t fftfpgaf_c2c_3d_ddr(const unsigned N, const float2 *inp, float2 *out, con
   checkError(status, "Failed to launch fetch kernel");
 
   status = clFinish(queue1);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue1");
   status = clFinish(queue2);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue2");
   status = clFinish(queue3);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue3");
   status = clFinish(queue4);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue4");
   status = clFinish(queue5);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue5");
   status = clFinish(queue6);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue6");
   status = clFinish(queue7);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue7");
 
   cl_ulong kernel_start = 0, kernel_end = 0;
   clGetEventProfilingInfo(startExec_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &kernel_start, NULL);
@@ -494,7 +494,7 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
   status = clEnqueueWriteBuffer(queue1, d_inData1, CL_TRUE, 0, sizeof(float2) * num_pts, inp, 0, NULL, NULL);
 
   status = clFinish(queue1);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue1");
 
   // Second Phase
   // Unblocking write to DDR second buffer from index num_pts
@@ -503,12 +503,6 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
   checkError(status, "Failed to write to DDR buffer");
 
   // Compute First FFT already transferred
-  status = clEnqueueTask(queue3, store_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose kernel");
-
-  status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fft kernel");
-
   status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fetch kernel");
 
@@ -531,21 +525,28 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
   status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose3D_kernel kernel");
 
+  status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fft kernel");
+
+  status = clEnqueueTask(queue3, store_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch store kernel");
+
   // Check finish of transfer and computations
   clWaitForEvents(1, &write_event[0]);
   clReleaseEvent(write_event[0]);
-  status = clFinish(queue1);
-  checkError(status, "failed to finish");
-  status = clFinish(queue2);
-  checkError(status, "failed to finish");
-  status = clFinish(queue3);
-  checkError(status, "failed to finish");
-  status = clFinish(queue4);
-  checkError(status, "failed to finish");
-  status = clFinish(queue5);
-  checkError(status, "failed to finish");
+
   status = clFinish(queue6);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue 6");
+  status = clFinish(queue5);
+  checkError(status, "failed to finish queue 5");
+  status = clFinish(queue4);
+  checkError(status, "failed to finish queue 4");
+  status = clFinish(queue3);
+  checkError(status, "failed to finish queue 3");
+  status = clFinish(queue2);
+  checkError(status, "failed to finish queue 2");
+  status = clFinish(queue1);
+  checkError(status, "failed to finish queue 1");
 
   // Loop over the 3 stages
   for(size_t i = 0; i < how_many-2; i++){
@@ -645,14 +646,31 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
     }
 
     // Set Kernel Arguments before execution
-    status = clEnqueueTask(queue3, store_kernel, 0, NULL, NULL);
+    status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fetch kernel");
+
+    status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch fft kernel");
+
+    status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch transpose kernel");
 
-    status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fft kernel");
+    status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch second fft kernel");
 
     status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch transpose3D_kernel kernel");
+
+    status = clFinish(queue1);
+    checkError(status, "failed to finish queue 1");
+    status = clFinish(queue2);
+    checkError(status, "failed to finish queue 2");
+    status = clFinish(queue3);
+    checkError(status, "failed to finish queue 3");
+    status = clFinish(queue4);
+    checkError(status, "failed to finish queue 4");
+    status = clFinish(queue5);
+    checkError(status, "failed to finish queue 5");
 
     mode = RD_GLOBALMEM;
     status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
@@ -661,32 +679,26 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
     status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch transpose3D_kernel kernel");
 
-    status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch second fft kernel");
-
-    status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch transpose kernel");
-
-    status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+    status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
     checkError(status, "Failed to launch fft kernel");
 
-    status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
-    checkError(status, "Failed to launch fetch kernel");
+    status = clEnqueueTask(queue3, store_kernel, 0, NULL, NULL);
+    checkError(status, "Failed to launch transpose kernel");
 
     status = clFinish(queue1);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue1");
     status = clFinish(queue2);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue2");
     status = clFinish(queue3);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue3");
     status = clFinish(queue4);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue4");
     status = clFinish(queue5);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue5");
     status = clFinish(queue6);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue6");
     status = clFinish(queue7);
-    checkError(status, "failed to finish");
+    checkError(status, "failed to finish queue7");
 
     clWaitForEvents(2, write_event);
     clReleaseEvent(write_event[0]);
@@ -774,14 +786,31 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
     checkError(status, "Failed to set store2 kernel arg");
   }
 
-  status = clEnqueueTask(queue3, store_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fetch kernel");
+
+  status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch fft kernel");
+
+  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose kernel");
 
-  status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fft kernel");
+  status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch second fft kernel");
 
   status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose3D_kernel kernel");
+
+  status = clFinish(queue1);
+  checkError(status, "failed to finish queue 1");
+  status = clFinish(queue2);
+  checkError(status, "failed to finish queue 2");
+  status = clFinish(queue3);
+  checkError(status, "failed to finish queue 3");
+  status = clFinish(queue4);
+  checkError(status, "failed to finish queue 4");
+  status = clFinish(queue5);
+  checkError(status, "failed to finish queue 5");
 
   mode = RD_GLOBALMEM;
   status=clSetKernelArg(transpose3D_kernel, 2, sizeof(cl_int), (void*)&mode);
@@ -790,32 +819,22 @@ fpga_t fftfpgaf_c2c_3d_ddr_batch(const unsigned N, const float2 *inp, float2 *ou
   status = clEnqueueTask(queue5, transpose3D_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch transpose3D_kernel kernel");
 
-  status = clEnqueueTask(queue4, fftb_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch second fft kernel");
-
-  status = clEnqueueTask(queue3, transpose_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch transpose kernel");
-
-  status = clEnqueueTask(queue2, ffta_kernel, 0, NULL, NULL);
+  status = clEnqueueTask(queue4, fftc_kernel, 0, NULL, NULL);
   checkError(status, "Failed to launch fft kernel");
 
-  status = clEnqueueTask(queue1, fetch_kernel, 0, NULL, NULL);
-  checkError(status, "Failed to launch fetch kernel");
+  status = clEnqueueTask(queue3, store_kernel, 0, NULL, NULL);
+  checkError(status, "Failed to launch store kernel");
 
   clWaitForEvents(1, &write_event[0]);
   clReleaseEvent(write_event[0]);
-  status = clFinish(queue1);
-  checkError(status, "failed to finish");
-  status = clFinish(queue2);
-  checkError(status, "failed to finish");
   status = clFinish(queue3);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue3");
   status = clFinish(queue4);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue4");
   status = clFinish(queue5);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue5");
   status = clFinish(queue6);
-  checkError(status, "failed to finish");
+  checkError(status, "failed to finish queue6");
 
   if( (how_many % 4) == 0){
     status = clEnqueueReadBuffer(queue6, d_outData4, CL_FALSE, 0, sizeof(float2) * num_pts, &out[(how_many - 1) * num_pts], 0, NULL, &write_event[0]);
