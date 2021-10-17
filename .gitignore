@@ -5,10 +5,11 @@ bin/
 fpgabitstream/
 reports/
 vscode/
-scripts/
+scripts/slurm
 build*
 svm_build/
 debug*
+test_*
 
 tags
 *.DS_Store
