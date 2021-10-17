@@ -4,6 +4,7 @@ variables:
 stages:
   - build
   - test
+  - test_fft1d
 
 build-all:
   stage: build
@@ -31,3 +32,9 @@ test-all:
     - CL_CONFIG_CPU_EMULATE_DEVICES=1 ./test_fftfpga
   dependencies:
     - build-all
+
+test-fft1d:
+  stage: test_fft1d
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 1 --emulate -p p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx
