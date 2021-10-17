@@ -5,6 +5,10 @@ stages:
   - build
   - test
   - test_fft1d
+  - test_fft2d_ddr
+  - test_fft2d_bram
+  - test_fft3d_ddr
+  - test_fft3d_bram
 
 build-all:
   stage: build
@@ -38,3 +42,27 @@ test-fft1d:
   script:
     - cd build/bin/
     - ./fft -n 64 -d 1 --emulate -p p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx
+
+test-fft2d_ddr:
+  stage: test_fft2d_ddr
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 2 --emulate -p p520_hpc_sg280l/emulation/fft2d_ddr_64_nointer/fft2d_ddr.aocx
+
+test-fft2d_bram:
+  stage: test_fft2d_bram
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 2 --emulate --use_bram -p p520_hpc_sg280l/emulation/fft2d_bram_64_nointer/fft2d_bram.aocx
+
+test-fft3d_ddr:
+  stage: test_fft3d_ddr
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 3 --emulate -p p520_hpc_sg280l/emulation/fft3d_ddr_64_nointer/fft3d_ddr.aocx
+
+test-fft3d_bram:
+  stage: test_fft3d_bram
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 3 --emulate --use_bram -p p520_hpc_sg280l/emulation/fft3d_bram_64_nointer/fft3d_bram.aocx
