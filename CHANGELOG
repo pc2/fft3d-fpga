@@ -1,21 +1,15 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+
 - configurable CL platform and device
 
-## [2.0.0] - []
+## [1.0.0] - [18.10.2021]
 
+- 1d, 2d, 3d FFT with variants on the location of the transposition
 - Batched 3D FFT to schedule multiple transformations by overlapping data transfers and FFT computations
 - Using OpenCL Shared Virtual Memory (SVM) for data transfers between FPGA and host
-
-## [1.0.0] - [16.06.2020]
-
-### Added
-- 3d FFT in 2 varients, in bram and ddr transpose
-- 2d FFT in 2 varients, in bram and ddr transpose
-- 1d FFT
-- CI/CD
-- gtests
-- CMake build
-- License
+- Unit tests
+- CMake build system
