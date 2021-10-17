@@ -7,7 +7,7 @@
 
 using namespace std;
 
-unsigned bit_reversed(unsigned x, unsigned bits) {
+unsigned bit_reversed(unsigned x, const unsigned bits) {
   unsigned y = 0;
   for (unsigned i = 0; i < bits; i++) {
     y <<= 1;
