@@ -38,22 +38,22 @@ Firstly, *dependencies* for building the system
 Once you have this covered, execute the following:
 
 ```bash
-mkdir build && cd build  # Directory to store build outputs
+mkdir build && cd build  
 cmake ..
 make
 ```
 
 You have built the *API* i.e., the OpenCL host code that invokes different transformations correctly are packed into a static library. This must be linked to an application.
 
-A sample application that helps invoke the APIs.
+You have also compiled a sample application that helps invoke these APIs.
 
-*Strictly said*, you have built the following:
+*Strictly said*, you have done the following:
 
 - `fftfpga` static library, linked such as `-lfftfpga`
 - `fftfpga/fftfpga.h` header file
 - `fft` - a sample application which links and includes the above two.
 
-Now, for the real deal, synthesizing the OpenCL FFT kernels. These can be synthesized to run on software emulation or on hardware as bitstreams.
+Now onto synthesizing the OpenCL FFT kernels. These can be synthesized to run on software emulation or on hardware as bitstreams.
 
 - Emulation
 
@@ -69,7 +69,7 @@ make <kernel_name>_syn
 make fft3d_ddr_syn
 ```
 
-Putting them all together, set the path to the synthesized bitstream along with other correct configurations as command line parameters to the sample application generated, to execute the transformation.
+Putting them all together, in order to execute the required FFT, set the path to the synthesized bitstream along with other correct configurations as command line parameters to the sample application generated.
 
 ```bash
 ./fft --num=64 --dim=3 --path=fft3d_ddr_128.aocx
@@ -77,7 +77,19 @@ Putting them all together, set the path to the synthesized bitstream along with 
 
 *Tip*: for emulation, use the `--emulate` command line parameter.
 
-For explanations regarding the command line options and the OpenCL kernels, check out x and y in the advanced guide.  
+### List of Kernels
+
+|     | Kernel Name | Description                         |
+| :-- | :---------- | :---------------------------------- |
+| 1D  | fft1d       | OpenCL design provided by Intel     |
+| 2D  | fft2d\_ddr  | DDR memory is used for 2D Transpose |
+|     | fft2d\_bram | BRAM is used for 2D Transpose       |
+| 3D  | fft3d\_ddr  | DDR memory is used for 3D Transpose |
+|     | fft3d\_bram | BRAM is used for 3D Transpose       |
+
+These kernels can be synthesized by appending `_emulate` or `_syn` to its suffix such as `fft1d_emulate`.
+
+Please checkout the [User Guide](docs/userguide.md) for more information such as configuration options etc.
 
 ## Publications
 
@@ -91,8 +103,8 @@ FFTFPGA has been cited in the following publications:
 
 ## Related Repositories
 
-- ConvFPGA - an OpenCL based library for FFT-based convolution on FPGAs
-- FFTFPGA-eval
+- [ConvFPGA](https://github.com/pc2/ConvFPGA) - an OpenCL based library for FFT-based convolution on FPGAs
+- [FFTFPGA-eval](https://git.uni-paderborn.de/arjunr/fftfpga-eval) - archives reports and measurements from FFTFPGA and ConvFPGA
 
 ## Contact
 

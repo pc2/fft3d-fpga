@@ -9,63 +9,72 @@
 - `scripts`: convenience slurm scripts
 - `docs`   : describes models regarding performance and resource utilization
 
-## Build System
+## CMake Build Setup
 
 ### External Libraries
 
-These additional libraries that are automatically fetched during system configuration:
+These additional libraries are automatically fetched during system configuration:
 
 - [cxxopts](https://github.com/jarro2783/cxxopts) for command line argument parsing
 - [hlslib](https://github.com/definelicht/hlslib) for CMake Intel FPGA OpenCL find packages
 - [findFFTW](https://github.com/egpbos/findFFTW.git) for CMake FFTW find package
 - [gtest](https://github.com/google/googletest.git) for unit tests
 
-### List of Kernels
+### Configuration Options
 
-|     | Kernel Name | Description                         |
-| :-- | :---------- | :---------------------------------- |
-| 1D  | fft1d       | OpenCL design provided by Intel     |
-| 2D  | fft2d\_ddr  | DDR memory is used for 2D Transpose |
-|     | fft2d\_bram | BRAM is used for 2D Transpose       |
-| 3D  | fft3d\_ddr  | DDR memory is used for 3D Transpose |
-|     | fft3d\_bram | BRAM is used for 3D Transpose       |
+The following compile options can be set when creating a CMake build directory either using the `-D` parameter or by using the cmake-gui such as:
 
-These kernels can be synthesized by appending `_emulate` or `_syn` to its suffix such as `fft1d_emulate`.
+`cmake -DCMAKE_BUILD_TYPE=Release ..`
+
+`ccmake ..`
+
+| ** Name                  ** | ** Description                                                                                                                              **     | ** Default Values                 ** | ** Alternate Values        ** |
+| :-------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------- | :---------------------------- |
+|  `AOC\_FLAGS*`            * | Intel offline compiler flags used for kernel compilation                                                                                           | `-g -v -no-interleaving=default`     |                               |
+| `EMU\_FLAGS`                | Compiler flags used for emulation, with fast emulation as default                                                                                  | `-march=emulator`                    |                               |
+| `FPGA\_BOARD\_NAME`         | Name of the target FPGA board                                                                                                                      | `p520\_hpc\_sg280l`                  | `pac\_s10\_usm`               |
+| `LOG\_FFT\_SIZE`            | Currently supported log2 number of points along each FFT dimension                                                                                 | 6                                    | 5, 7, 8, 9                    |
+|  `BURST\_INTERLEAVING*`    |  Toggle to enable burst interleaved global memory accesses  <br>  Sets the `-no-interleaving=` to the `AOC\_FLAGS*` *parameter*                   | NO                                   | YES                           |
+| `DDR\_BUFFER\_LOCATION`     |  Name of the global memory interface found in the `board\_spec.xml`  <br>  `DDR` :`p520\_hpc\_sg280l`, `device` : `pac\_s10\_usm` board            | `DDR`                                | `device`                      |
+| `SVM\_BUFFER\_LOCATION`     |  Name of the SVM global memory interface found in the `board\_spec.xml*` * <br>  "" : `p520\_hpc\_sg280l`, `host`: `pac\_s10\_usm`                 |                                      | `host`                        |
+| `CMAKE\_BUILD\_TYPE`        | Specify the build type                                                                                                                             | `Debug`                              | `Release`, `RelWithDebInfo`   |
 
 ### Additional Kernel Builds
 
-Generation of aocl reports
+Generation of Intel OpenCL Offline Compiler reports
 
 ```bash
 make <kernel_name>_report
 make fft1d_report
 ```
 
-## Compile Definitions
+### Using the GNU Debugger (gdb) with the Debug builds
 
-Using ccmake or by setting it using -D 
+CMake debug builds lets you step through code using gdb.
 
-- `LOG_SIZE`: set the log of the length of the matrix. Example: `-DLOG_SIZE=6`.
-
-## Enabling Shared Virtual Memory Extensions (SVM)
-
-Currently tested for pacd5005 board. The board specification required setting the following attributes to global memory accesses, hence it has been set automatically. Otherwise, it can be set under the variable names.
-
-
+`gdb --args ./fft -n 64 -d 2 -p <path-to-bitstream>`
 
 ## Runtime Input Parameters
 
 ```bash
-    -h, --help        show this help message and exit
+Offloading FFT on FPGA
+Usage:
+  ./fft<..> [OPTION...]
 
-Basic Options
-    -n, --n=<int>     FFT Points
-    -s, --sp          Single Precision
-    -i, --iter=<int>  Iterations
-    -b, --back        Backward FFT
-    -v, --svm         Use SVM
-    -m, --bram        Use BRAM
-    -p, --path=<str>  Path to bitstreamm
+  -n, --num arg    Number of sample points in a dimension (default: 64)
+  -d, --dim arg    Number of dimensions (default: 3)
+  -b, --back       Toggle Backward FFT
+  -i, --iter arg   Number of iterations (default: 1)
+  -p, --path arg   Path to FPGA bitstream
+  -y, --noverify   Toggle to not verify with FFTW
+  -c, --batch arg  Number of batches of FFT calculations in FPGA (default: 1)
+  -t, --burst      Toggle to use burst interleaved global memory accesses  in
+                   FPGA
+  -m, --use_bram   Toggle to use BRAM instead of DDR for 3D Transpose  
+  -s, --use_usm    Toggle to use Unified Shared Memory features for data
+                   transfers between host and device
+  -e, --emulate    Toggle to enable emulation 
+  -h, --help       Print usage
 ```
 
 ## Output Interpretation
@@ -74,36 +83,50 @@ The examples measure and output relevant performance metrics that are shown belo
 
 ```bash
 ------------------------------------------
-FFT Configuration:
+FFT CONFIGURATION: 
 --------------------------------------------
-Type               = Complex to Complex
-Points             = 64
-Precision          = Single
-Direction          = Forward
-Placement          = In Place
-Iterations         = 1
+Type               : Complex to Complex
+Points             : 64 
+Direction          : Forward 
+Placement          : In Place    
+Batch              : 1 
+Iterations         : 1 
+Transpose3D        : DDR 
+Burst Interleaving : No 
+Emulation          : Yes 
+USM Feature        : No 
 --------------------------------------------
-
-        Initializing FPGA ...
-        Getting program binary from path emu_64_fft3d_bram/fft3d_bram.aocx ...
-        Building program ...
-        FFT kernel initialization is complete.
-        Cleaning up FPGA resources ...
-
+-- Initializing FPGA ...
+-- 1 platforms found
+	0: intel(r) fpga emulation platform for opencl(tm)
+-- 1 devices found
+	Choosing first device by default
+-- Getting program binary from path: p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx
+-- Building the program
+0: Calculating FFT - 
+-- Launching 1D FFT of 1 batches 
+Launching FFT transform for 1 batch 
+-- Copying data from host to device
+-- Executing kernels
+-- Transfering results back to host
+-- Cleaning up FPGA resources ...
 ------------------------------------------
-Measurements
+Measurements 
 --------------------------------------------
-Points             = 64
-Precision          = Single
-Direction          = Forward
-PCIe Write         = 0.03ms
-Kernel Execution   = 0.48ms
-PCIe Read          = 0.02ms
-Throughput         = 0.00GFLOPS/s | 0.00 GB/s
+PCIe Write          = 0.0000ms
+Kernel Execution    = 0.0182ms
+Kernel Exec/Batch   = 0.0182ms
+PCIe Read           = 0.0000ms
+Total               = 0.0182ms
+Throughput          = 0.0982GFLOPS/s | 26.8213 GB/s
 ```
 
-- `PCIe Write` and `PCIe Read` the time taken in milliseconds for transfer of data from host to global memory through PCIe bus.
+- `PCIe Write`: time taken in milliseconds to transfer data from host memory of the CPU to the global memory of the FPGA.
 
-- `Kernel Execution` represents the time taken in milliseconds for the execution of the OpenCL implementation that includes the global memory accesses.
+- `PCIe Read` : the time taken in milliseconds to transfer data from global memory of the FPGA to the host memory of the CPU.
 
+- `Kernel Execution` : the time taken in milliseconds for the execution of the required kernels, which includes the global memory accesses.
 
+- `Total` : `PCIe Write` + `Kernel Execution` + `PCIe Read`
+
+- `Throughput` : $$ \frac{dim * 5 * N^{dim} * log_2 N}{runtime}$$
