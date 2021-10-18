@@ -12,29 +12,34 @@ else()
   message(ERROR, "No Target board found")
 endif()  
 
-set(SDK_VERSION $ENV{QUARTUS_VERSION} CACHE STRING "SDK Version")
+# SDK and BSP Versions are used in setting target paths for bitstreams
+set(SDK_VERSION $ENV{QUARTUS_VERSION})
 if(SDK_VERSION)
   message("-- SDK Version: ${SDK_VERSION}")
 else()
   message(ERROR, "No SDK Version Found")
 endif()
 
-set(BSP_VERSION $ENV{QUARTUS_VERSION_BSP} CACHE STRING "BSP Version")
+set(BSP_VERSION $ENV{QUARTUS_VERSION_BSP})
 if(BSP_VERSION)
   message("-- BSP Version: ${BSP_VERSION}")
 else()
   message(ERROR, "No BSP Found")
 endif()
 
+# Default number of points used per cycle in an FFT computation
+# Currently, supports 8 points per cycle
 set(LOG_POINTS 3 CACHE STRING "Log of per sample data points")
 math(EXPR POINTS "1 << ${LOG_POINTS}")
 
+# Number of points in each dimension of the FFT being computed
 set(LOG_FFT_SIZE 6 CACHE STRING "Log of points of FFT")
 set_property(CACHE LOG_FFT_SIZE PROPERTY STRINGS 4 5 6 7 8 9)
 math(EXPR FFT_SIZE "1 << ${LOG_FFT_SIZE}")
 message("-- FFT size is ${FFT_SIZE}")
 math(EXPR DEPTH "1 << (${LOG_FFT_SIZE} + ${LOG_FFT_SIZE} - ${LOG_POINTS})")
 
+# Toggle to append the right parameters to AOC Flags
 set(BURST_INTERLEAVING CACHE BOOL "Enable burst interleaving")
 if(BURST_INTERLEAVING)
   set(INTERLEAVING "")
