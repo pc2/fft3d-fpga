@@ -6,17 +6,16 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-channel float2 chaninfft3da[POINTS];
-channel float2 chaninfft3db[POINTS];
-channel float2 chaninfft3dc[POINTS];
+channel float2 chaninfft3da[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninfft3db[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninfft3dc[POINTS] __attribute__((depth(POINTS)));
 
-channel float2 chaninTranspose[POINTS];
-channel float2 chaninTranspose3D[POINTS];
-
-channel float2 chaninTranStore[POINTS];
+channel float2 chaninTranspose[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninTranStore1[POINTS] __attribute__((depth(POINTS)));
+channel float2 chaninTranStore2[POINTS] __attribute__((depth(POINTS)));
 
 // Kernel that fetches data from global memory 
-kernel void fetch(global volatile float2 * restrict src) {
+kernel void fetchBitrev1(__global __attribute__((buffer_location("host"))) volatile float2 * restrict src) {
   unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bitrevA = false;
 
@@ -113,7 +112,8 @@ kernel void fft3da(int inverse) {
   }
 }
 
-kernel void transpose2d() {
+__attribute__((max_global_work_dim(0)))
+kernel void transpose() {
   const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bufA = false, is_bitrevA = false;
 
@@ -216,26 +216,26 @@ kernel void fft3db(int inverse) {
       data = fft_step(data, i % (N / POINTS), fft_delay_elements, inverse, LOGN);
 
       if (i >= N / POINTS - 1) {
-        write_channel_intel(chaninTranspose3D[0], data.i0);
-        write_channel_intel(chaninTranspose3D[1], data.i1);
-        write_channel_intel(chaninTranspose3D[2], data.i2);
-        write_channel_intel(chaninTranspose3D[3], data.i3);
-        write_channel_intel(chaninTranspose3D[4], data.i4);
-        write_channel_intel(chaninTranspose3D[5], data.i5);
-        write_channel_intel(chaninTranspose3D[6], data.i6);
-        write_channel_intel(chaninTranspose3D[7], data.i7);
+        write_channel_intel(chaninTranStore1[0], data.i0);
+        write_channel_intel(chaninTranStore1[1], data.i1);
+        write_channel_intel(chaninTranStore1[2], data.i2);
+        write_channel_intel(chaninTranStore1[3], data.i3);
+        write_channel_intel(chaninTranStore1[4], data.i4);
+        write_channel_intel(chaninTranStore1[5], data.i5);
+        write_channel_intel(chaninTranStore1[6], data.i6);
+        write_channel_intel(chaninTranStore1[7], data.i7);
       }
     }
   }
 }
 
-kernel void transpose3D() {
+__attribute__((max_global_work_dim(0)))
+kernel void transposeStore1(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict dest) {
 
   const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bufA = false, is_bitrevA = false;
 
   float2 buf[2][DEPTH][POINTS];
-  local float2 buf3D[N * N * N];
   //float2 __attribute__((memory, numbanks(8))) bitrev_in[2][N];
   float2 bitrev_in[2][N];
   
@@ -245,14 +245,14 @@ kernel void transpose3D() {
 
     float2x8 data, data_out;
     if (step < ((N * DEPTH) - initial_delay)) {
-      data.i0 = read_channel_intel(chaninTranspose3D[0]);
-      data.i1 = read_channel_intel(chaninTranspose3D[1]);
-      data.i2 = read_channel_intel(chaninTranspose3D[2]);
-      data.i3 = read_channel_intel(chaninTranspose3D[3]);
-      data.i4 = read_channel_intel(chaninTranspose3D[4]);
-      data.i5 = read_channel_intel(chaninTranspose3D[5]);
-      data.i6 = read_channel_intel(chaninTranspose3D[6]);
-      data.i7 = read_channel_intel(chaninTranspose3D[7]);
+      data.i0 = read_channel_intel(chaninTranStore1[0]);
+      data.i1 = read_channel_intel(chaninTranStore1[1]);
+      data.i2 = read_channel_intel(chaninTranStore1[2]);
+      data.i3 = read_channel_intel(chaninTranStore1[3]);
+      data.i4 = read_channel_intel(chaninTranStore1[4]);
+      data.i5 = read_channel_intel(chaninTranStore1[5]);
+      data.i6 = read_channel_intel(chaninTranStore1[6]);
+      data.i7 = read_channel_intel(chaninTranStore1[7]);
     } else {
       data.i0 = data.i1 = data.i2 = data.i3 = 
                 data.i4 = data.i5 = data.i6 = data.i7 = 0;
@@ -281,26 +281,29 @@ kernel void transpose3D() {
     if (step >= (DEPTH)) {
       unsigned index = (step - DEPTH) * 8;
 
-      buf3D[index + 0] = data_out.i0;
-      buf3D[index + 1] = data_out.i1;
-      buf3D[index + 2] = data_out.i2;
-      buf3D[index + 3] = data_out.i3;
-      buf3D[index + 4] = data_out.i4;
-      buf3D[index + 5] = data_out.i5;
-      buf3D[index + 6] = data_out.i6;
-      buf3D[index + 7] = data_out.i7;
+      dest[index + 0] = data_out.i0;
+      dest[index + 1] = data_out.i1;
+      dest[index + 2] = data_out.i2;
+      dest[index + 3] = data_out.i3;
+      dest[index + 4] = data_out.i4;
+      dest[index + 5] = data_out.i5;
+      dest[index + 6] = data_out.i6;
+      dest[index + 7] = data_out.i7;
     }
   }
+}
+__attribute__((max_global_work_dim(0)))
+kernel void fetchBitrev2(__global __attribute__((buffer_location(BUFFER_LOCATION))) volatile float2 * restrict src) {
+  unsigned delay = (1 << (LOGN - LOGPOINTS)); // N / 8
 
-  is_bufA = false;
-  is_bitrevA = false;
-  
+  bool is_bufA = false, is_bitrevA = false;
   float2 __attribute__((memory, numbanks(8))) bitrev_out[2][N];
+  float2 buf[2][DEPTH][POINTS];
   
   // additional iterations to fill the buffers
-  for(unsigned step = 0; step < (N * DEPTH) + DEPTH + DELAY; step++){
+  for(unsigned step = 0; step < (N * DEPTH) + DEPTH + delay; step++){
     // increment z by 1 every N/8 steps until (N*N/ 8)
-    unsigned start_index = step + DELAY;
+    unsigned start_index = step + delay;
     unsigned zdim = (step >> (LOGN - LOGPOINTS)) & (N - 1); 
 
     // increment y by 1 every N*N/8 points until N
@@ -316,14 +319,14 @@ kernel void transpose3D() {
 
     float2x8 data, data_out;
     if (step < (N * DEPTH)) {
-      data.i0 = buf3D[index + 0];
-      data.i1 = buf3D[index + 1];
-      data.i2 = buf3D[index + 2];
-      data.i3 = buf3D[index + 3];
-      data.i4 = buf3D[index + 4];
-      data.i5 = buf3D[index + 5];
-      data.i6 = buf3D[index + 6];
-      data.i7 = buf3D[index + 7];
+      data.i0 = src[index + 0];
+      data.i1 = src[index + 1];
+      data.i2 = src[index + 2];
+      data.i3 = src[index + 3];
+      data.i4 = src[index + 4];
+      data.i5 = src[index + 5];
+      data.i6 = src[index + 6];
+      data.i7 = src[index + 7];
     } else {
       data.i0 = data.i1 = data.i2 = data.i3 = 
                 data.i4 = data.i5 = data.i6 = data.i7 = 0;
@@ -348,7 +351,7 @@ kernel void transpose3D() {
       is_bitrevA ? bitrev_out[1] : bitrev_out[0],
       data_out, start_row);
 
-    if (step >= (DEPTH + DELAY)) {
+    if (step >= (DEPTH + delay)) {
 
       write_channel_intel(chaninfft3dc[0], data_out.i0);
       write_channel_intel(chaninfft3dc[1], data_out.i1);
@@ -400,20 +403,21 @@ kernel void fft3dc(int inverse) {
 
       // Write result to channels
       if (i >= N / POINTS - 1) {
-        write_channel_intel(chaninTranStore[0], data.i0);
-        write_channel_intel(chaninTranStore[1], data.i1);
-        write_channel_intel(chaninTranStore[2], data.i2);
-        write_channel_intel(chaninTranStore[3], data.i3);
-        write_channel_intel(chaninTranStore[4], data.i4);
-        write_channel_intel(chaninTranStore[5], data.i5);
-        write_channel_intel(chaninTranStore[6], data.i6);
-        write_channel_intel(chaninTranStore[7], data.i7);
+        write_channel_intel(chaninTranStore2[0], data.i0);
+        write_channel_intel(chaninTranStore2[1], data.i1);
+        write_channel_intel(chaninTranStore2[2], data.i2);
+        write_channel_intel(chaninTranStore2[3], data.i3);
+        write_channel_intel(chaninTranStore2[4], data.i4);
+        write_channel_intel(chaninTranStore2[5], data.i5);
+        write_channel_intel(chaninTranStore2[6], data.i6);
+        write_channel_intel(chaninTranStore2[7], data.i7);
       }
     }
   }
 }
 
-kernel void store(global float2 * restrict dest) {
+__attribute__((max_global_work_dim(0)))
+kernel void transposeStore2(__global __attribute__((buffer_location("host"))) float2 * restrict dest) {
 
   const int DELAY = (1 << (LOGN - LOGPOINTS)); // N / 8
   bool is_bufA = false, is_bitrevA = false;
@@ -428,14 +432,14 @@ kernel void store(global float2 * restrict dest) {
 
     float2x8 data, data_out;
     if (step < ((N * DEPTH) - initial_delay)) {
-      data.i0 = read_channel_intel(chaninTranStore[0]);
-      data.i1 = read_channel_intel(chaninTranStore[1]);
-      data.i2 = read_channel_intel(chaninTranStore[2]);
-      data.i3 = read_channel_intel(chaninTranStore[3]);
-      data.i4 = read_channel_intel(chaninTranStore[4]);
-      data.i5 = read_channel_intel(chaninTranStore[5]);
-      data.i6 = read_channel_intel(chaninTranStore[6]);
-      data.i7 = read_channel_intel(chaninTranStore[7]);
+      data.i0 = read_channel_intel(chaninTranStore2[0]);
+      data.i1 = read_channel_intel(chaninTranStore2[1]);
+      data.i2 = read_channel_intel(chaninTranStore2[2]);
+      data.i3 = read_channel_intel(chaninTranStore2[3]);
+      data.i4 = read_channel_intel(chaninTranStore2[4]);
+      data.i5 = read_channel_intel(chaninTranStore2[5]);
+      data.i6 = read_channel_intel(chaninTranStore2[6]);
+      data.i7 = read_channel_intel(chaninTranStore2[7]);
     } else {
       data.i0 = data.i1 = data.i2 = data.i3 = 
                 data.i4 = data.i5 = data.i6 = data.i7 = 0;

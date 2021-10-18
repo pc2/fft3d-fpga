@@ -31,7 +31,7 @@ TEST_F(OpenCLUtilsTest, FindValidPlatform){
   EXPECT_EQ(findPlatform("test"), nullptr);
 
   // correct platform name
-  pl_id = findPlatform("Intel(R) FPGA");
+  pl_id = findPlatform("Intel(R) FPGA Emulation Platform for OpenCL(TM)");
   ASSERT_NE(pl_id, nullptr);
 }
 
@@ -63,11 +63,8 @@ TEST_F(OpenCLUtilsTest, FindValidDevice){
  */
 TEST_F(OpenCLUtilsTest, CreateValidProgram){
   cl_int status = 0;
-  const char *path = "emu_64_fft3d_bram/fft3d_bram.aocx";
-
+  const char* path = "p520_hpc_sg280l/emulation/fft3d_bram_64_nointer/fft3d_bram.aocx";
   // bad context
-  cl_context bad_context;
-  EXPECT_EQ(getProgramWithBinary(bad_context, &device, 1, path), nullptr);
 
   cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &status);
   checkError(status, "Context Fail");
@@ -84,5 +81,6 @@ TEST_F(OpenCLUtilsTest, CreateValidProgram){
 
   // right path
   EXPECT_NE(getProgramWithBinary(context, &device, 1, path), nullptr);
+  
   //fpga_final();
 }

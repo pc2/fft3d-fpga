@@ -1,34 +1,26 @@
-# Arjun Ramaswami
 cmake_minimum_required(VERSION 3.10)
-project(examplesfftfpga VERSION 0.1
-            DESCRIPTION "Example Code that uses libfftfpga"
+project(examplesfftfpga VERSION 2.0
+            DESCRIPTION "Sample Code that uses libfftfpga"
             LANGUAGES C CXX)
 
-set(examples fft3d fft2d fft1d)
+set(examples fft)
 
 # create a target for each of the example 
 foreach(example ${examples})
+  add_executable(${example} 
+                  ${example}.cpp helper.cpp)
 
-  add_executable(${example} ${example}.c
-                  common/helper.c
-                  common/verify_fftw.c)
-
-  target_compile_options(${example}
-      PRIVATE -Wall -Werror)
+  target_compile_options(${example} PRIVATE -Wall -Werror)
       
   target_include_directories(${example}
-      PRIVATE  ${IntelFPGAOpenCL_INCLUDE_DIRS}
-                "${CMAKE_SOURCE_DIR}/extern/argparse"
-                common)
+    PRIVATE ${PROJECT_SOURCE_DIR} 
+            ${IntelFPGAOpenCL_INCLUDE_DIRS} 
+            ${CMAKE_BINARY_DIR}/include 
+            ${FFTW_INCLUDE_DIRS})
     
-  target_link_libraries(${example}
-      PRIVATE ${IntelFPGAOpenCL_LIBRARIES} fftfpga argparse m)
-
-if(FFTW_FOUND)
   target_compile_definitions(${example} PRIVATE USE_FFTW)
-  target_link_libraries(${example} PUBLIC fftw3 fftw3f)
-else()
-  message(WARNING, "FFTW library not found. Cannot perform verification")
-endif()
 
+  target_link_libraries(${example}
+    PRIVATE cxxopts fftfpga fftw3 fftw3f
+            ${IntelFPGAOpenCL_LIBRARIES})
 endforeach()

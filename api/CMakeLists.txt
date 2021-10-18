@@ -1,6 +1,6 @@
 # Arjun Ramaswami
 cmake_minimum_required(VERSION 3.10)
-project(fftfpga VERSION 0.3
+project(fftfpga VERSION 2.0
             DESCRIPTION "APIs for FFT using FPGAs"
             LANGUAGES C CXX)
 
@@ -10,6 +10,11 @@ project(fftfpga VERSION 0.3
 ##
 add_library(${PROJECT_NAME} STATIC 
               ${PROJECT_SOURCE_DIR}/src/fftfpga.c 
+              ${PROJECT_SOURCE_DIR}/src/fft3d.c
+              ${PROJECT_SOURCE_DIR}/src/fft3d_svm.c
+              ${PROJECT_SOURCE_DIR}/src/fft2d.c
+              ${PROJECT_SOURCE_DIR}/src/fft1d.c
+              ${PROJECT_SOURCE_DIR}/src/svm.c
               ${PROJECT_SOURCE_DIR}/src/opencl_utils.c
               ${PROJECT_SOURCE_DIR}/src/misc.c)
 

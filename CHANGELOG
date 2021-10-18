@@ -1,23 +1,15 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
-- coarse grained SVM support for Intel FPGAs
-- host code as library
-- configurable platform name
-- choice of platform (currently chooses first platform)
-- choice of device (currently chooses first device)
-- loads binary to multiple devices (currently only the first device)
-- batch mode
-- xilinx fpgas
 
-## [1.0.0] - []
+- configurable CL platform and device
 
-### Added
-- 3d FFT in 2 varients, in bram and ddr transpose
-- 2d FFT in 2 varients, in bram and ddr transpose
-- 1d FFT
-- CI/CD
-- gtests
-- CMake build
-- License
+## [1.0.0] - [18.10.2021]
+
+- 1d, 2d, 3d FFT with variants on the location of the transposition
+- Batched 3D FFT to schedule multiple transformations by overlapping data transfers and FFT computations
+- Using OpenCL Shared Virtual Memory (SVM) for data transfers between FPGA and host
+- Unit tests
+- CMake build system

@@ -13,174 +13,98 @@ This repository provides OpenCL host code in the form of FFTW like APIs, which c
 - Single Precision (32 bit floating point)
 - C2C: Complex input to complex output
 - Out-of-place transforms
+- Batched 3D transforms
+- OpenCL Shared Virtual Memory (SVM) extensions for data transfers
 
 ## Supported FPGAs
 
-The library has been tested on the following FPGAs:
+This library has been tested using the following FPGAs present in the [Noctua](https://pc2.uni-paderborn.de/hpc-services/available-systems/noctua1/) cluster of the Paderborn Center for Parallel Computing (PC2) at Paderborn University:
 
-- Intel Stratix 10 GX 2800
-- Intel Arria 10
+- [Bittware 520N](https://www.bittware.com/fpga/520n/) card with Intel Stratix 10 GX 2800 FPGA
+- [Intel FPGA PAC D5005](https://www.intel.com/content/www/us/en/programmable/products/boards_and_kits/dev-kits/altera/intel-fpga-pac-d5005/overview.html) card with Intel Stratix 10 SX 2800 FPGA
 
 ## Who is using FFTFPGA?
 
 - [CP2K](https://github.com/cp2k/cp2k):  the quantum chemistry software package has an interface to offload 3d FFTs to Intel FPGAs that uses the OpenCL kernel designs of FFTFPGA.
 
-## Getting Started
+## Quick Setup
 
-
-### Dependencies
-
+Firstly, *dependencies* for building the system
 - [CMake](https://cmake.org/) >= 3.10
-- C Compiler with C11 support
-- Intel OpenCL FPGA SDK
+- C++ compiler with C++11 support (GCC 4.9.0+)
+- Intel FPGA SDK for OpenCL
+- FFTW3
 
-Additional submodules used:
-
-- [argparse](https://github.com/cofyc/argparse.git) for command line argument parsing
-- [hlslib](https://github.com/definelicht/hlslib) for CMake Intel FPGA OpenCL find packages
-- [findFFTW](https://github.com/egpbos/findFFTW.git) for CMake FFTW find package
-- [gtest](https://github.com/google/googletest.git) for unit tests
-
-### Structure
-
-The repository consists of the following:
-
-- `api`     : host code to setup and execute FPGA bitstreams. Compiled to static library that can be linked to your application
-- `kernels` : OpenCL kernel code for 1d, 2d and 3d FFT
-- `examples`: Sample code that makes use of the api
-- `extern` : external packages as submodules required to run the project
-- `cmake`  : cmake modules used by the build system
-- `scripts`: convenience slurm scripts
-- `docs`   : describes models regarding performance and resource utilization
-- `data`   : evaluation results and measurements
-
-### Setup
-
-FFTFPGA has a CMake build script that can be used to build the project. This consists of two steps:
-
-1. Building the API that can be linked to your application
-2. Building OpenCL Kernel Designs that are used by the API
-
-#### API
+Once you have this covered, execute the following:
 
 ```bash
-mkdir build && cd build  # Directory to store build outputs
+mkdir build && cd build  
 cmake ..
 make
 ```
 
-This generates the following:
+You have built the *API* i.e., the OpenCL host code that invokes different transformations correctly are packed into a static library. This must be linked to an application.
 
-- `fftfpga` static library to link such as `-lfftfpga`
+You have also compiled a sample application that helps invoke these APIs.
+
+*Strictly said*, you have done the following:
+
+- `fftfpga` static library, linked such as `-lfftfpga`
 - `fftfpga/fftfpga.h` header file
+- `fft` - a sample application which links and includes the above two.
 
-The sample programs given in the `example` directory are also compiled to binaries of their respective names, which makes use of the files given previously.
-
-#### OpenCL Kernel Designs
-
-FFTFPGA provides OpenCL designs that can be compiled for different options:
+Now onto synthesizing the OpenCL FFT kernels. These can be synthesized to run on software emulation or on hardware as bitstreams.
 
 - Emulation
 
 ```bash
 make <kernel_name>_emu
-make fft1d_emulate
+make fft3d_ddr_emulate
 ```
 
-- Report Generation
-
-```bash
-make <kernel_name>_rep
-make fft1d_rep
-```
-
-- Synthesis
+- Hardware Bitstream
 
 ```bash
 make <kernel_name>_syn
-make fft1d_syn
+make fft3d_ddr_syn
 ```
 
-Paths to these bitstreams should be provided as parameters to certain API calls to execute the design.
-
-### Examples
-
-#### Additional Dependency
-
-- FFTW3
-
-#### Execution
+Putting them all together, in order to execute the required FFT, set the path to the synthesized bitstream along with other correct configurations as command line parameters to the sample application generated.
 
 ```bash
-./fft3d -n 64 -m -s -p emu_64_fft3d_bram/fft3d_bram.aocx
+./fft --num=64 --dim=3 --path=fft3d_ddr_128.aocx
 ```
 
-Prepend the command with `CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1`for emulation.
+*Tip*: for emulation, use the `--emulate` command line parameter.
 
-#### Compile Definitions
+### List of Kernels
 
-- `LOG_SIZE`: set the log of the length of the matrix. Example: `-DLOG_SIZE=6`.
+|     | Kernel Name | Description                         |
+| :-- | :---------- | :---------------------------------- |
+| 1D  | fft1d       | OpenCL design provided by Intel     |
+| 2D  | fft2d\_ddr  | DDR memory is used for 2D Transpose |
+|     | fft2d\_bram | BRAM is used for 2D Transpose       |
+| 3D  | fft3d\_ddr  | DDR memory is used for 3D Transpose |
+|     | fft3d\_bram | BRAM is used for 3D Transpose       |
 
-#### Runtime Input Parameters
+These kernels can be synthesized by appending `_emulate` or `_syn` to its suffix such as `fft1d_emulate`.
 
-```bash
-    -h, --help        show this help message and exit
-
-Basic Options
-    -n, --n=<int>     FFT Points
-    -s, --sp          Single Precision
-    -i, --iter=<int>  Iterations
-    -b, --back        Backward FFT
-    -v, --svm         Use SVM
-    -m, --bram        Use BRAM
-    -p, --path=<str>  Path to bitstreamm
-```
-
-#### Output
-
-The examples measure and output relevant performance metrics that are shown below:
-
-```bash
-------------------------------------------
-FFT Configuration:
---------------------------------------------
-Type               = Complex to Complex
-Points             = 64
-Precision          = Single
-Direction          = Forward
-Placement          = In Place
-Iterations         = 1
---------------------------------------------
-
-        Initializing FPGA ...
-        Getting program binary from path emu_64_fft3d_bram/fft3d_bram.aocx ...
-        Building program ...
-        FFT kernel initialization is complete.
-        Cleaning up FPGA resources ...
-
-------------------------------------------
-Measurements
---------------------------------------------
-Points             = 64
-Precision          = Single
-Direction          = Forward
-PCIe Write         = 0.03ms
-Kernel Execution   = 0.48ms
-PCIe Read          = 0.02ms
-Throughput         = 0.00GFLOPS/s | 0.00 GB/s
-```
-
-- `PCIe Write` and `PCIe Read` the time taken in milliseconds for transfer of data from host to global memory through PCIe bus.
-
-- `Kernel Execution` represents the time taken in milliseconds for the execution of the OpenCL implementation that includes the global memory accesses.
+Please checkout the [User Guide](docs/userguide.md) for more information such as configuration options etc.
 
 ## Publications
 
 FFTFPGA has been cited in the following publications:
 
-1. CP2K: An electronic structure and molecular dynamics software package - Quickstep: Efficient and accurate electronic structure calculations: https://doi.org/10.1063/5.0007045
+1. Evaluating the Design Space for Offloading 3D FFT Calculations to an FPGA for High-Performance Computing : https://doi.org/10.1007/978-3-030-79025-7_21
 
-2. Efficient Ab-Initio Molecular Dynamic Simulations by Offloading Fast Fourier Transformations to FPGAs ([preprint](https://arxiv.org/abs/2006.08435))
+2. CP2K: An electronic structure and molecular dynamics software package - Quickstep: Efficient and accurate electronic structure calculations: https://doi.org/10.1063/5.0007045
+
+3. Efficient Ab-Initio Molecular Dynamic Simulations by Offloading Fast Fourier Transformations to FPGAs : https://doi.org/10.1109/FPL50879.2020.00065
+
+## Related Repositories
+
+- [ConvFPGA](https://github.com/pc2/ConvFPGA) - an OpenCL based library for FFT-based convolution on FPGAs
+- [FFTFPGA-eval](https://git.uni-paderborn.de/arjunr/fftfpga-eval) - archives reports and measurements from FFTFPGA and ConvFPGA
 
 ## Contact
 

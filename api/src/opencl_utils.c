@@ -50,6 +50,8 @@ cl_platform_id findPlatform(const char *platform_name){
   char name_search[pl_len + 1];   // VLA
   tolowercase(platform_name, name_search);
 
+  printf("-- %d platforms found\n", num_platforms);
+
   // Search the platforms for the platform name passed as argument
   for(int i = 0; i < num_platforms; i++){
     // Get the size of the platform name referred to by the id
@@ -71,6 +73,7 @@ cl_platform_id findPlatform(const char *platform_name){
     }
 
     tolowercase(plat_name, plat_name_lc);
+    printf("\t%d: %s\n", i, plat_name_lc);
     if( strstr(plat_name_lc, name_search)){
       cl_platform_id pid = pids[i];
       free(pids);
@@ -139,7 +142,7 @@ cl_program getProgramWithBinary(cl_context context, cl_device_id *devices, cl_ui
   char *binary, *binaries[num_devices];
   cl_int bin_status, status;
 
-  if(num_devices == 0)
+  if(num_devices == 0 || context == NULL)
     return NULL;
 
   if (!fileExists(path)){
@@ -200,7 +203,7 @@ static size_t loadBinary(const char *binary_path, char **buf){
  * \return pointer to allocated memory on successful allocation otherwise NULL
  */
 void* alignedMalloc(size_t size){
-  const unsigned OPENCL_ALIGNMENT = 64;
+  size_t OPENCL_ALIGNMENT = 64;
   void *memptr = NULL;
   int ret = posix_memalign(&memptr, OPENCL_ALIGNMENT, size);
   if (ret != 0){

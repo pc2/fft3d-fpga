@@ -62,7 +62,7 @@
  */
 
 // Include source code for an engine that produces 8 points each step
-#include "fft_8.cl" 
+#include "../common/fft_8.cl" 
 
 // Source the log(size) (log(1k) = 10) from a header shared with the host code
 #include "fft_config.h"
@@ -138,7 +138,6 @@ int mangle_bits(int x) {
 
 __attribute__((reqd_work_group_size((1 << LOGN), 1, 1)))
 kernel void fetch(global float2 * restrict src, int mangle) {
-  const int N = (1 << LOGN);
 
   // Local memory for storing 8 rows
   local float2 buf[8 * N];
@@ -203,7 +202,6 @@ kernel void fetch(global float2 * restrict src, int mangle) {
  */
 
 kernel void fft2d(int inverse) {
-  const int N = (1 << LOGN);
 
   /* The FFT engine requires a sliding window for data reordering; data stored
    * in this array is carried across loop iterations and shifted by 1 element
@@ -259,7 +257,6 @@ kernel void fft2d(int inverse) {
 
 __attribute__((reqd_work_group_size((1 << LOGN), 1, 1)))
 kernel void transpose(global float2 * restrict dest, int mangle) {
-  const int N = (1 << LOGN);
   local float2 buf[POINTS * N];
   buf[8 * get_local_id(0)] = read_channel_intel(chan0);
   buf[8 * get_local_id(0) + 1] = read_channel_intel(chan1);

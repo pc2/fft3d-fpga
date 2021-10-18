@@ -4,36 +4,58 @@ variables:
 stages:
   - build
   - test
+  - test_fft1d
+  - test_fft2d_ddr
+  - test_fft2d_bram
+  - test_fft3d_ddr
 
 build-all:
   stage: build
   script:
     - rm -rf build
     - mkdir -p build && cd build
-    - cmake -DLOG_FFT_SIZE=6 ..
+    - srun -A pc2-mitarbeiter -p fpga --constraint=emul --pty bash
+    - cmake -DLOG_FFT_SIZE=6 -DCMAKE_BUILD_TYPE=Release ..
     - make
-    - make fft1d_emu
-    - make fft2d_ddr_emu
-    - make fft2d_bram_emu
-    - make fft3d_ddr_triv_emu
-    - make fft3d_bram_emu
-    - chmod +x bin/fft3d bin/fft2d bin/fft1d bin/test_fftfpga
+    - chmod +x bin/fft
   artifacts:
     paths:
-      - build/bin/emu_64_fft1d/fft1d.aocx
-      - build/bin/emu_64_fft2d_ddr/fft2d_bram.aocx
-      - build/bin/emu_64_fft2d_bram/fft2d_ddr.aocx
-      - build/bin/emu_64_fft3d_ddr_triv/fft3d_ddr_triv.aocx
-      - build/bin/emu_64_fft3d_bram/fft3d_bram.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft2d_bram_64_nointer/fft2d_bram.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft2d_ddr_64_nointer/fft2d_ddr.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft3d_ddr_64_nointer/fft3d_ddr.aocx
+      - build/bin/p520_hpc_sg280l/emulation/fft3d_bram_64_nointer/fft3d_bram.aocx
       - build/bin/test_fftfpga
-      - build/bin/fft3d
-      - build/bin/fft2d
-      - build/bin/fft1d
+      - build/bin/fft
 
 test-all:
   stage: test
   script:
     - cd build/bin/
-    - CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ./test_fftfpga
+    - CL_CONFIG_CPU_EMULATE_DEVICES=1 ./test_fftfpga
   dependencies:
     - build-all
+
+test-fft1d:
+  stage: test_fft1d
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 1 --emulate -p p520_hpc_sg280l/emulation/fft1d_64_nointer/fft1d.aocx
+
+test-fft2d_ddr:
+  stage: test_fft2d_ddr
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 2 --emulate -p p520_hpc_sg280l/emulation/fft2d_ddr_64_nointer/fft2d_ddr.aocx
+
+test-fft2d_bram:
+  stage: test_fft2d_bram
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 2 --emulate --use_bram -p p520_hpc_sg280l/emulation/fft2d_bram_64_nointer/fft2d_bram.aocx
+
+test-fft3d_ddr:
+  stage: test_fft3d_ddr
+  script:
+    - cd build/bin/
+    - ./fft -n 64 -d 3 --emulate -p p520_hpc_sg280l/emulation/fft3d_ddr_64_nointer/fft3d_ddr.aocx
