@@ -13,12 +13,10 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extDep.cmake)
 
 ## find Intel FPGA SDK for OpenCL
 find_package(IntelFPGAOpenCL REQUIRED)
-message("-- IntelFPGAOpenCL found")
 
 ## find FFTW
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(FFTW REQUIRED)
-message("-- FFTW found")
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)

@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 - configurable CL platform and device
 
+## [1.0.1] - [29.10.2021]
+
+- Updated hlslib version and removed minor print statements
+
 ## [1.0.0] - [18.10.2021]
 
 - 1d, 2d, 3d FFT with variants on the location of the transposition

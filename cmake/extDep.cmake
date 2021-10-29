@@ -7,7 +7,7 @@ include(FetchContent)
 FetchContent_Declare(
   hlslib
   GIT_REPOSITORY      https://github.com/definelicht/hlslib.git
-  GIT_TAG             66462501a8779694f8b64b2c32cc59552cd59429
+  GIT_TAG             v1.4.2
 )
 FetchContent_MakeAvailable(hlslib)
 
