@@ -73,7 +73,7 @@ cl_platform_id findPlatform(const char *platform_name){
     }
 
     tolowercase(plat_name, plat_name_lc);
-    printf("\t%d: %s\n", i, plat_name_lc);
+    printf("\t%d: found: %s, parameter: %s\n", i, plat_name_lc, name_search);
     if( strstr(plat_name_lc, name_search)){
       cl_platform_id pid = pids[i];
       free(pids);

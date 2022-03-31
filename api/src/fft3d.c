@@ -201,7 +201,6 @@ fpga_t fftfpgaf_c2c_3d_bram(const unsigned N, const float2 *inp, float2 *out, co
  * \param  inp  : float2 pointer to input data of size [N * N * N]
  * \param  out  : float2 pointer to output data of size [N * N * N]
  * \param  inv  : toggle to activate backward FFT
- * \param  interleaving : toggle to use burst interleaved global memory buffers
  * \return fpga_t : time taken in milliseconds for data transfers and execution
  */
 fpga_t fftfpgaf_c2c_3d_ddr(const unsigned N, const float2 *inp, float2 *out, const bool inv) {
